@@ -8,6 +8,9 @@ copyright: MIT licensed
 
 theme:
   name: material
+  # false disables Material's Google Fonts request: the two variable faces are
+  # self-hosted in docs/stylesheets/fonts, so the site makes no third-party calls.
+  font: false
   icon:
     repo: fontawesome/brands/github
   features:
@@ -17,19 +20,23 @@ theme:
     - navigation.sections
     - navigation.top
     - search.suggest
+    - search.highlight
+    - navigation.tracking
+    - navigation.indexes
+    - content.tabs.link
     - toc.follow
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
-      primary: indigo
-      accent: indigo
+      primary: custom
+      accent: custom
       toggle:
         icon: material/weather-night
         name: Switch to dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
-      primary: indigo
-      accent: indigo
+      primary: custom
+      accent: custom
       toggle:
         icon: material/weather-sunny
         name: Switch to light mode
@@ -42,6 +49,7 @@ nav:
   - API reference: api.md
   - Webhooks: webhooks.md
   - Deployment: deployment.md
+  - Deploying on Dokploy: dokploy.md
   - Operations: operations.md
   - Security: security.md
   - CLI: cli.md
@@ -62,6 +70,9 @@ markdown_extensions:
   - pymdownx.superfences
   - pymdownx.tabbed:
       alternate_style: true
+
+extra_css:
+  - stylesheets/extra.css
 
 plugins:
   - search

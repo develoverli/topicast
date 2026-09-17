@@ -112,15 +112,8 @@ services:
 
 ## Dokploy
 
-1. **Create Application** → source: this repository (or the GHCR image).
-2. **Environment**: paste your `.env` values.
-3. **Volumes**: mount `topicast-data` at `/data`, and your `config.yaml` at
-   `/config/config.yaml`.
-4. **Ports**: publish the same port the container listens on. Dokploy does not share the
-   compose file's defaults, so set `TOPICAST_PORT` explicitly and use that same number for
-   Published and Target (`TOPICAST_PORT=8339` → published `8339`, target `8339`). A mismatch
-   silently yields a service nothing can reach.
-5. **Domain**: add one if you want TLS through Traefik.
+Dokploy has its own page, because the config file needs a file mount and the port has a
+pitfall: **[Deploying on Dokploy](dokploy.md)**.
 
 ## Kubernetes
 

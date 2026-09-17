@@ -49,5 +49,6 @@ Everything lives in one container plus one SQLite file. No Redis, no Postgres, n
 - [API reference](api.md) — endpoints, fields, status codes, errors.
 - [Webhooks](webhooks.md) — GitHub, Uptime Kuma, Alertmanager, Grafana, Slack- and
   Discord-compatible endpoints, generic.
-- [Deployment](deployment.md) — Compose, reverse proxy, Tailscale, Dokploy.
+- [Deployment](deployment.md) — Compose, reverse proxy, Tailscale, Kubernetes.
+- [Deploying on Dokploy](dokploy.md) — the full path, click by click.
 - [Security](security.md) — keys, scopes, exposure, hardening.

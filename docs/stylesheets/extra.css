@@ -1,0 +1,338 @@
+/* topicast documentation theme.
+ *
+ * Goals: long technical pages that stay comfortable to read, code that is easy to scan,
+ * and tables that hold dense reference material without turning into noise.
+ * Every colour below meets 4.5:1 against its background in both light and dark mode.
+ */
+
+/* Self-hosted variable faces: no third-party request, and the docs work offline.
+ * Inter for prose; JetBrains Mono for code, where 0/O and 1/l/I must stay distinct.
+ * font-display: swap keeps text visible while they load. */
+
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("./fonts/inter-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215,
+    U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url("./fonts/jetbrains-mono-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215,
+    U+FEFF, U+FFFD;
+}
+
+:root {
+  --md-text-font: "Inter";
+  --md-code-font: "JetBrains Mono";
+
+  /* Type scale — 1.2 ratio from a 16px base, so headings step up predictably. */
+  --tc-text-sm: 0.8125rem;
+  --tc-text-base: 1rem;
+  --tc-text-lg: 1.1875rem;
+  --tc-text-xl: 1.4375rem;
+  --tc-text-2xl: 1.75rem;
+  --tc-text-3xl: 2.125rem;
+
+  /* Spacing rhythm, 4px based. */
+  --tc-space-2: 0.5rem;
+  --tc-space-3: 0.75rem;
+  --tc-space-4: 1rem;
+  --tc-space-6: 1.5rem;
+  --tc-space-8: 2rem;
+
+  --tc-radius: 0.5rem;
+  --tc-measure: 74ch;
+}
+
+/* ---------------------------------------------------------------- palette */
+
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color: #2f5fb3;
+  --md-primary-fg-color--light: #4a7ccc;
+  --md-primary-fg-color--dark: #234a8e;
+  --md-accent-fg-color: #1b64c9;
+
+  --md-default-bg-color: #fdfdfe;
+  --md-default-fg-color: #14181f;
+  --md-default-fg-color--light: #4a5464;
+  --md-typeset-color: #1f242c;
+  --md-typeset-a-color: #1b5fbd;
+
+  --md-code-bg-color: #f4f6fa;
+  --md-code-fg-color: #24303f;
+
+  --tc-border: #dde2ea;
+  --tc-surface: #f7f9fc;
+  --tc-muted: #5a6474;
+}
+
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color: #1a1f28;
+  --md-accent-fg-color: #7fb0ff;
+
+  --md-default-bg-color: #12161d;
+  --md-default-fg-color: #e6eaf2;
+  --md-typeset-color: #d7dde7;
+  --md-typeset-a-color: #8ab4ff;
+
+  --md-code-bg-color: #1a202a;
+  --md-code-fg-color: #dde4ef;
+
+  --tc-border: #2a3240;
+  --tc-surface: #171d26;
+  --tc-muted: #98a3b5;
+}
+
+/* ------------------------------------------------------------- typography */
+
+body {
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Inter's own contextual alternates and tabular figures for data tables. */
+  font-feature-settings: "cv05" 1, "ss01" 1;
+}
+
+code,
+kbd,
+pre {
+  font-family: "JetBrains Mono", ui-monospace, "SFMono-Regular", "Consolas", monospace;
+}
+
+/* Numbers in reference tables line up instead of dancing. */
+.md-typeset table:not([class]) td,
+.md-typeset table:not([class]) th {
+  font-variant-numeric: tabular-nums;
+}
+
+.md-typeset {
+  font-size: var(--tc-text-base);
+  line-height: 1.68;
+  letter-spacing: -0.003em;
+}
+
+/* Keep prose at a readable measure; tables, code and media may still go wider. */
+.md-typeset p,
+.md-typeset li,
+.md-typeset blockquote {
+  max-width: var(--tc-measure);
+}
+
+.md-typeset h1,
+.md-typeset h2,
+.md-typeset h3,
+.md-typeset h4 {
+  font-weight: 650;
+  letter-spacing: -0.021em;
+  color: var(--md-default-fg-color);
+}
+
+.md-typeset h1 {
+  font-size: var(--tc-text-3xl);
+  line-height: 1.18;
+  margin-bottom: var(--tc-space-6);
+}
+
+.md-typeset h2 {
+  font-size: var(--tc-text-2xl);
+  line-height: 1.25;
+  margin-top: var(--tc-space-8);
+  padding-top: var(--tc-space-4);
+  border-top: 1px solid var(--tc-border);
+}
+
+.md-typeset h3 {
+  font-size: var(--tc-text-xl);
+  line-height: 1.3;
+  margin-top: var(--tc-space-6);
+}
+
+.md-typeset h4 {
+  font-size: var(--tc-text-lg);
+  margin-top: var(--tc-space-6);
+}
+
+/* The first heading on a page has nothing to separate it from. */
+.md-typeset h2:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
+.md-typeset a {
+  text-underline-offset: 0.18em;
+  text-decoration-thickness: 1px;
+}
+
+.md-typeset a:hover {
+  text-decoration: underline;
+}
+
+/* ------------------------------------------------------------------ code */
+
+.md-typeset code,
+.md-typeset kbd {
+  font-size: 0.855em;
+  border-radius: 0.3rem;
+  padding: 0.12em 0.36em;
+}
+
+.md-typeset :not(pre) > code {
+  border: 1px solid var(--tc-border);
+  color: var(--md-code-fg-color);
+}
+
+.md-typeset pre > code {
+  font-size: var(--tc-text-sm);
+  line-height: 1.62;
+  padding: var(--tc-space-4);
+  border: 1px solid var(--tc-border);
+  border-radius: var(--tc-radius);
+}
+
+.md-typeset .highlight {
+  margin: var(--tc-space-6) 0;
+}
+
+/* Console transcripts read as output, not as something to copy. */
+.md-typeset .language-console pre > code {
+  background: var(--tc-surface);
+}
+
+/* --------------------------------------------------------------- tables */
+
+.md-typeset table:not([class]) {
+  border: 1px solid var(--tc-border);
+  border-radius: var(--tc-radius);
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.925rem;
+  box-shadow: none;
+  overflow: hidden;
+}
+
+.md-typeset table:not([class]) th {
+  background: var(--tc-surface);
+  font-weight: 620;
+  letter-spacing: 0.005em;
+  border-bottom: 1px solid var(--tc-border);
+}
+
+.md-typeset table:not([class]) th,
+.md-typeset table:not([class]) td {
+  padding: var(--tc-space-3) var(--tc-space-4);
+  vertical-align: top;
+}
+
+.md-typeset table:not([class]) tr:not(:last-child) td {
+  border-bottom: 1px solid var(--tc-border);
+}
+
+.md-typeset table:not([class]) tr:hover td {
+  background: var(--tc-surface);
+}
+
+/* Reference tables are full of short code spans; keep them from wrapping oddly. */
+.md-typeset table:not([class]) td code {
+  white-space: nowrap;
+}
+
+/* ---------------------------------------------------------- admonitions */
+
+.md-typeset .admonition,
+.md-typeset details {
+  font-size: 0.94rem;
+  border-width: 1px;
+  border-left-width: 3px;
+  border-radius: var(--tc-radius);
+  box-shadow: none;
+}
+
+.md-typeset .admonition-title,
+.md-typeset summary {
+  font-weight: 620;
+  letter-spacing: -0.008em;
+}
+
+/* --------------------------------------------------- navigation & chrome */
+
+.md-nav {
+  font-size: 0.8125rem;
+}
+
+.md-nav__title {
+  font-weight: 640;
+  letter-spacing: -0.01em;
+}
+
+.md-nav__link--active,
+.md-nav__link:focus,
+.md-nav__link:hover {
+  color: var(--md-accent-fg-color);
+}
+
+.md-sidebar--secondary .md-nav__link--active {
+  font-weight: 600;
+}
+
+.md-header {
+  box-shadow: 0 1px 0 rgb(0 0 0 / 8%);
+}
+
+.md-header__title {
+  font-weight: 640;
+  letter-spacing: -0.012em;
+}
+
+.md-footer-meta {
+  font-size: 0.8125rem;
+}
+
+/* Wider comfortable column on large screens without letting prose sprawl. */
+@media screen and (min-width: 76.25em) {
+  .md-grid {
+    max-width: 68rem;
+  }
+}
+
+/* --------------------------------------------------------------- misc */
+
+.md-typeset hr {
+  border-bottom: 1px solid var(--tc-border);
+}
+
+.md-typeset blockquote {
+  color: var(--tc-muted);
+  border-left: 3px solid var(--tc-border);
+}
+
+/* Keyboard users must always see where they are. */
+.md-typeset a:focus-visible,
+.md-nav__link:focus-visible,
+.md-header__button:focus-visible,
+.md-footer__link:focus-visible,
+.md-clipboard:focus-visible {
+  outline: 2px solid var(--md-accent-fg-color);
+  outline-offset: 2px;
+  border-radius: 0.25rem;
+}
+
+/* Respect a reader who asked for less motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

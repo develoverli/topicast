@@ -1,0 +1,52 @@
+# topicast configuration
+# Full reference: https://develoverli.github.io/topicast/configuration/
+#
+# ${VAR} reads an environment variable; ${VAR:-default} falls back to a default.
+# Secrets belong in the environment (.env), never in this file.
+
+bots:
+  default:
+    token: ${TELEGRAM_BOT_TOKEN}
+    # rate_per_second: 30        # Telegram's global limit for a bot
+
+chats:
+  homelab:
+    id: ${TELEGRAM_CHAT_ID}      # e.g. -1001234567890 (negative for groups)
+    bot: default
+    # rate_per_minute: 20        # default: 20 for groups, 60 for private chats
+
+aliases:
+  alerts:
+    chat: homelab
+    topic: 5                     # omit to post in the group's General topic
+    description: Infrastructure alerts
+    # dedupe_window: 120         # overrides defaults.dedupe_window
+    # silent_levels: [info]      # overrides defaults.silent_levels
+  deploys:
+    chat: homelab
+    topic: 7
+  backups:
+    chat: homelab
+    topic: 9
+
+defaults:
+  dedupe_window: 60              # seconds; 0 disables deduplication
+  silent_levels: [info, success]
+  # level_prefix:
+  #   info: "ℹ️"
+  #   success: "✅"
+  #   warning: "⚠️"
+  #   error: "❌"
+  #   critical: "🚨"
+
+hooks:
+  github:
+    secret: ${GITHUB_WEBHOOK_SECRET:-}   # when set, signatures are required
+    # events: [push, release, workflow_run]
+  templates:
+    # Rendered with Jinja2: /v1/hooks/generic/<alias>?template=plain
+    plain: "{{ payload.message }}"
+    backup: |
+      <b>Backup {{ payload.job }}</b>
+      status: {{ payload.status }}
+      size: {{ payload.size }}

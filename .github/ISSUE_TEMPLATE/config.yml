@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question or setup help
+    url: https://github.com/develoverli/topicast/discussions
+    about: Ask in Discussions instead of opening an issue.
+  - name: Security vulnerability
+    url: https://github.com/develoverli/topicast/security/advisories/new
+    about: Report privately, never in a public issue.

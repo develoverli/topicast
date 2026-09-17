@@ -1,0 +1,57 @@
+name: Bug report
+description: Something does not work as documented
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. **Remove bot tokens, API keys and chat ids** from anything you paste.
+
+  - type: input
+    id: version
+    attributes:
+      label: topicast version
+      description: "`docker exec topicast topicast version` or the image tag"
+      placeholder: "0.1.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install
+    attributes:
+      label: How are you running it?
+      options: [Docker image, Docker Compose, From source, Other]
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What you expected versus what you got.
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Send `curl -X POST ... -d '{"to": "alerts", "text": "..."}'`
+        2. …
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Relevant lines from `docker compose logs topicast`.
+      render: shell
+
+  - type: textarea
+    id: config
+    attributes:
+      label: Configuration
+      description: The relevant part of config.yaml, with secrets removed.
+      render: yaml

@@ -1,0 +1,26 @@
+# topicast — minimal self-hosted setup.
+# 1. Put your secrets in .env   2. Put your topics in config.yaml   3. docker compose up -d
+services:
+  topicast:
+    image: ghcr.io/develoverli/topicast:latest
+    # Build from a checkout instead:
+    # build: .
+    restart: unless-stopped
+    env_file: [.env]
+    environment:
+      TOPICAST_PORT: 8080
+    ports:
+      # Bind to localhost only; put a reverse proxy or a VPN in front of it.
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - topicast-data:/data
+      - ./config.yaml:/config/config.yaml:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8080/healthz', timeout=3).status == 200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  topicast-data:

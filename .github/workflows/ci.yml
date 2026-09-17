@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Lint, types and tests
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.12.15"
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --locked --all-groups --python ${{ matrix.python-version }}
+
+      - name: Ruff (lint)
+        run: uv run ruff check --output-format=github .
+
+      - name: Ruff (format)
+        run: uv run ruff format --check .
+
+      - name: Mypy
+        run: uv run mypy
+
+      - name: Tests
+        run: uv run pytest --cov --cov-report=xml --cov-report=term-missing
+
+      - name: Docs build
+        if: matrix.python-version == '3.12'
+        run: uv run mkdocs build --strict
+
+  docker:
+    name: Docker image builds
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build (amd64)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          load: true
+          tags: topicast:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Smoke test the image
+        run: |
+          set -euo pipefail
+          cp config.example.yaml config.yaml
+          docker run -d --name topicast \
+            -e TOPICAST_SECRET_KEY=$(openssl rand -base64 32) \
+            -e TELEGRAM_BOT_TOKEN=123456:fake \
+            -e TELEGRAM_CHAT_ID=-1001234567890 \
+            -v "$PWD/config.yaml:/config/config.yaml:ro" \
+            -p 8080:8080 topicast:ci
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8080/healthz; then ok=1; break; fi
+            sleep 1
+          done
+          docker logs topicast
+          test "${ok:-0}" = "1"
+          docker exec topicast topicast keys create ci --scope send --alias alerts | tail -5
+          docker rm -f topicast

@@ -1,6 +1,6 @@
 [project]
 name = "topicast"
-version = "0.6.0"
+version = "0.6.1"
 description = "Self-hosted notification hub that routes messages and webhooks to Telegram forum topics."
 readme = "README.md"
 license = "MIT"

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.1](https://github.com/develoverli/topicast/compare/v0.6.0...v0.6.1) (2026-09-17)
+
+
+### Bug Fixes
+
+* **ci:** 🐛 keep uv.lock in sync after a release so PR checks pass ([7569c4b](https://github.com/develoverli/topicast/commit/7569c4b10c76b56e26dc904b5eb0b86fea60933e))
+
 ## [0.6.0](https://github.com/develoverli/topicast/compare/v0.5.0...v0.6.0) (2026-09-17)
 
 

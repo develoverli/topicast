@@ -146,24 +146,110 @@ Every error is an [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem doc
 }
 ```
 
-Match on `code`, not on the prose in `detail`:
+Match on `code`, not on the prose in `detail`.
+
+**Authentication and permissions**
 
 | Code | Status | Meaning |
 |---|---|---|
 | `missing_api_key` | 401 | No key was sent. |
 | `invalid_api_key` | 401 | Unknown or revoked key. |
+| `invalid_signature` | 401 | Webhook signature does not match (GitHub). |
 | `missing_scope` | 403 | The key lacks `send`, `edit` or `hooks`. |
 | `alias_not_allowed` | 403 | The key may not use this alias. |
+
+**Your request**
+
+| Code | Status | Meaning |
+|---|---|---|
 | `unknown_alias` | 404 | The alias is not in `config.yaml`. |
-| `message_not_found` | 404 | No such message id. |
-| `idempotency_conflict` | 409 | Key reused with a different request. |
-| `not_delivered` | 409 | The message cannot be edited yet. |
-| `sending` | 409 | The message is mid-delivery; retry shortly. |
-| `validation_error` | 422 | Invalid fields (see `errors`). |
+| `message_not_found` | 404 | No such message id, or it belongs to another key's aliases. |
+| `unknown_source` | 404 | Unknown webhook source in the URL. |
+| `unknown_template` | 404 | The `template` query parameter names a template that is not configured. |
+| `validation_error` | 422 | Invalid fields. The `errors` array says which. |
+| `invalid_json` | 422 | The body is not valid JSON. |
+| `invalid_field` | 422 | A multipart field has an unusable value. |
+| `missing_field` | 422 | A required multipart field (`to`) is absent. |
+| `invalid_parse_mode` | 422 | `parse_mode` is not `html`, `markdownv2` or `plain`. |
+| `empty_message` | 422 | Neither `text` nor a file was provided. |
 | `text_too_long` | 422 | Over the limit with `on_overflow=reject`. |
-| `telegram_rejected` | 422 | Telegram refused the message. |
-| `telegram_rate_limited` | 429 | Flood limit hit; see `Retry-After`. |
-| `delivery_failed` | 502 | Delivery failed while waiting. |
+| `mixed_media_group` | 422 | Photos and documents cannot travel in one album. |
+| `too_many_files` | 422 | More than 10 files in one request. |
+| `invalid_payload` | 422 | A webhook adapter could not read the payload. |
+| `template_error` | 422 | The Jinja2 template failed to render. |
+| `file_too_large` | 413 | An uploaded file exceeds `TOPICAST_MAX_UPLOAD_MB`. |
+| `payload_too_large` | 413 | A webhook body exceeds 1 MB. |
+
+**State conflicts**
+
+| Code | Status | Meaning |
+|---|---|---|
+| `idempotency_conflict` | 409 | The `Idempotency-Key` was used with a different body. |
+| `conflict` | 409 | Two concurrent requests used the same `Idempotency-Key`. |
+| `not_delivered` | 409 | The message cannot be edited until it is delivered. |
+| `sending` | 409 | The message is mid-delivery; retry shortly. |
+| `not_failed` | 409 | Only failed messages can be retried. |
+| `files_gone` | 409 | The uploaded files were cleaned up; send the message again. |
+
+**Telegram and delivery**
+
+| Code | Status | Meaning |
+|---|---|---|
+| `telegram_rejected` | 422 | Telegram refused the message (bad topic, bad markup on an edit). |
+| `telegram_message_not_found` | 404 | The message no longer exists in Telegram. |
+| `telegram_rate_limited` | 429 | Flood limit hit. Honour `Retry-After`. |
+| `telegram_unavailable` | 502 | Telegram is unreachable right now. |
+| `delivery_failed` | 502 | Delivery failed while waiting (`wait=true` only). |
+| `internal_error` | 500 | Unexpected server error. Check the logs with the `request_id`. |
+
+### What a caller should do
+
+| Situation | Action |
+|---|---|
+| `401`, `403`, `404`, `409`, `413`, `422` | Do not retry. The request or the configuration is wrong. |
+| `429` | Wait for `Retry-After`, then retry. Usually the queue absorbs this for you. |
+| `500`, `502`, `504`, connection errors | Retry with backoff, sending the same `Idempotency-Key` so a delivered message is not duplicated. |
+| `202` | Nothing to do. The message is queued; `GET /v1/messages/{id}` tells you how it ended. |
+
+A `202` is the normal answer. Treating it as an error is the most common integration mistake:
+the queue exists precisely so your service does not wait for Telegram.
+
+## Where to point your service
+
+topicast listens on plain HTTP and is not meant to be public, so the URL depends on where the
+caller runs.
+
+| The caller runs… | Base URL | What it needs |
+|---|---|---|
+| In the same `docker compose` file | `http://topicast:8080` | Nothing; Compose resolves the service name. |
+| In another Compose project on the same host | `http://topicast:8080` | Join topicast's network (`networks: [topicast_default]`, `external: true`). |
+| Directly on the host | `http://127.0.0.1:8080` | The port published to localhost. |
+| On another machine over a VPN | `http://<vpn-host>:8080` | The port bound to the VPN address. With Docker, add `extra_hosts: ["<vpn-host>:100.x.y.z"]` so the name resolves without waiting for the VPN's DNS. |
+| Outside your network | `https://topicast.example.com` | A reverse proxy with TLS. See [Deployment](deployment.md). |
+
+Give the caller two environment variables and nothing else:
+
+```bash
+TOPICAST_URL=http://topicast:8080
+TOPICAST_KEY=tc_1a2b3c4d_...
+```
+
+Store the key like any other secret (environment variable, Docker secret, your secret manager);
+it is equivalent to permission to post in the aliases it was granted.
+
+Check the wiring before writing code:
+
+```bash
+docker compose exec my-app sh -c 'wget -qO- $TOPICAST_URL/healthz'
+# {"status":"ok","version":"0.5.0"}
+```
+
+| Failure | Cause |
+|---|---|
+| `Temporary failure in name resolution` | The hostname does not resolve from inside the container. Wrong network, or missing `extra_hosts`. |
+| `No route to host` | The name resolved but the host is unreachable. VPN down on the caller's host. |
+| `Connection refused` | Reached the host, nothing is listening. topicast is down, or bound to another address or port. |
+| `401` | The URL is right; the key is wrong or absent. |
 
 ## Client examples
 

@@ -136,7 +136,7 @@ class MessageService:
         )
         silent = out.silent
         if silent is None:
-            silent = out.level is not None and out.level in self.config.silent_levels(out.alias)
+            silent = self._is_silent(out.alias, out.level)
 
         caption: str | None = None
         try:
@@ -170,6 +170,15 @@ class MessageService:
             "steps_done": 0,
         }
         return kind, payload
+
+    def _is_silent(self, alias: str, level: Level | None) -> bool:
+        """Quiet hours win over the level, except for the levels declared exempt."""
+        config = self.config
+        if config.in_quiet_hours(alias) and (
+            level is None or level not in config.defaults.quiet_exempt_levels
+        ):
+            return True
+        return level is not None and level in config.silent_levels(alias)
 
     def _fingerprint(self, out: OutgoingMessage, kind: str) -> str:
         if out.dedupe_key:

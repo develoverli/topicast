@@ -100,6 +100,7 @@ The names your services use in `"to"`.
 | `topic` | *(none)* | Topic id. Omit to post in the group's General topic. |
 | `dedupe_window` | `defaults.dedupe_window` | Seconds. `0` disables deduplication for this alias. |
 | `silent_levels` | `defaults.silent_levels` | Levels delivered without a notification sound. |
+| `quiet_hours` | `defaults.quiet_hours` | Local window with no sound, e.g. `"23:00-08:00"`. |
 | `description` | — | Documentation only; shown by `topicast check-config`. |
 
 ### `defaults`
@@ -109,6 +110,9 @@ The names your services use in `"to"`.
 | `dedupe_window` | `60` | Seconds an identical message is suppressed. |
 | `silent_levels` | `[info, success]` | Levels that arrive silently. |
 | `level_prefix` | `ℹ️ ✅ ⚠️ ❌ 🚨` | Emoji prefix per level. Set a level to `""` to disable it. |
+| `timezone` | `UTC` | IANA name used to read `quiet_hours`, e.g. `Europe/Madrid`. |
+| `quiet_hours` | *(none)* | Window applied to aliases without their own. |
+| `quiet_exempt_levels` | `[critical]` | Levels that keep their sound during quiet hours. |
 
 ### `hooks`
 
@@ -177,6 +181,39 @@ Set `dedupe_window: 0` on aliases where every message matters (deploy logs, audi
 | `critical` | 🚨 | loud |
 
 `"silent": true` or `false` in a request overrides the default for that message.
+
+## Quiet hours
+
+Nobody wants the 3 AM backup to buzz. A window silences an alias during those hours:
+
+```yaml
+defaults:
+  timezone: Europe/Madrid        # quiet_hours is read in this zone
+  quiet_hours: "23:00-08:00"     # applies to every alias…
+  quiet_exempt_levels: [critical]
+
+aliases:
+  backups:
+    chat: homelab
+    topic: 9
+    quiet_hours: "22:00-09:00"   # …unless the alias sets its own
+  pager:
+    chat: homelab
+    topic: 11
+    quiet_hours: "00:00-00:00"   # an empty window means never quiet
+```
+
+Windows may cross midnight. The start is inclusive and the end exclusive, so `23:00-08:00`
+covers 23:00 through 07:59.
+
+Who wins, in order:
+
+1. `"silent": true` or `false` in the request — always.
+2. Quiet hours, unless the level is in `quiet_exempt_levels` (`critical` by default).
+3. `silent_levels` (`info` and `success` by default).
+
+Messages still arrive on time; only the notification sound changes. To delay delivery instead,
+see `send_at` in the [API reference](api.md).
 
 ## Rate limiting
 

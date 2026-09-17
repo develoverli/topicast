@@ -11,11 +11,13 @@ from __future__ import annotations
 
 import os
 import re
+from datetime import UTC, datetime, time, tzinfo
 from enum import StrEnum
 from functools import lru_cache
 from pathlib import Path
 from typing import Annotated, Any, Literal, Self
 from urllib.parse import urlparse
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import yaml
 from pydantic import (
@@ -162,17 +164,57 @@ class ChatConfig(_Strict):
         return 20.0 if self.is_group else 60.0
 
 
+class QuietHours(_Strict):
+    """A daily window during which messages arrive without a sound."""
+
+    start: time
+    end: time
+
+    @classmethod
+    def parse(cls, value: str) -> Self:
+        try:
+            start, end = (time.fromisoformat(part.strip()) for part in value.split("-", 1))
+        except ValueError as exc:
+            msg = f"invalid quiet_hours '{value}': use HH:MM-HH:MM, e.g. 23:00-08:00"
+            raise ValueError(msg) from exc
+        return cls(start=start, end=end)
+
+    def covers(self, moment: time) -> bool:
+        if self.start == self.end:
+            return False
+        if self.start < self.end:
+            return self.start <= moment < self.end
+        return moment >= self.start or moment < self.end  # the window crosses midnight
+
+
 class AliasConfig(_Strict):
     chat: Name
     topic: int | None = Field(default=None, ge=1)
     dedupe_window: int | None = Field(default=None, ge=0)
     silent_levels: frozenset[Level] | None = None
+    quiet_hours: QuietHours | None = Field(
+        default=None,
+        description="Local window with no notification sound, e.g. '23:00-08:00'.",
+    )
     description: str | None = None
+
+    @field_validator("quiet_hours", mode="before")
+    @classmethod
+    def _parse_quiet_hours(cls, value: Any) -> Any:
+        return QuietHours.parse(value) if isinstance(value, str) else value
 
 
 class Defaults(_Strict):
     dedupe_window: int = Field(default=60, ge=0, description="Seconds. 0 disables dedupe.")
     silent_levels: frozenset[Level] = frozenset({Level.INFO, Level.SUCCESS})
+    timezone: str = Field(default="UTC", description="IANA name used to read quiet_hours.")
+    quiet_hours: QuietHours | None = Field(
+        default=None, description="Applies to aliases without their own window."
+    )
+    quiet_exempt_levels: frozenset[Level] = Field(
+        default=frozenset({Level.CRITICAL}),
+        description="Levels that keep their sound during quiet hours.",
+    )
     level_prefix: dict[Level, str] = Field(
         default_factory=lambda: {
             Level.INFO: "ℹ️",
@@ -209,6 +251,13 @@ class AppConfig(_Strict):
     @model_validator(mode="after")
     def _check_references(self) -> Self:
         errors: list[str] = []
+        try:
+            ZoneInfo(self.defaults.timezone)
+        except (ZoneInfoNotFoundError, ValueError):
+            errors.append(
+                f"defaults.timezone '{self.defaults.timezone}' is not an IANA name "
+                "(e.g. Europe/Madrid)"
+            )
         for name, chat in self.chats.items():
             if chat.bot not in self.bots:
                 errors.append(f"chats.{name}.bot references unknown bot '{chat.bot}'")
@@ -226,6 +275,24 @@ class AppConfig(_Strict):
     def silent_levels(self, alias: str) -> frozenset[Level]:
         value = self.aliases[alias].silent_levels
         return self.defaults.silent_levels if value is None else value
+
+    def quiet_hours(self, alias: str) -> QuietHours | None:
+        return self.aliases[alias].quiet_hours or self.defaults.quiet_hours
+
+    def in_quiet_hours(self, alias: str, moment: datetime | None = None) -> bool:
+        """True when `moment` (default: now) falls in the alias's quiet window."""
+        window = self.quiet_hours(alias)
+        if window is None:
+            return False
+        moment = moment or datetime.now(UTC)
+        return window.covers(moment.astimezone(self.tzinfo).time())
+
+    @property
+    def tzinfo(self) -> tzinfo:
+        try:
+            return ZoneInfo(self.defaults.timezone)
+        except ZoneInfoNotFoundError:  # pragma: no cover - validated at startup
+            return UTC
 
     def chat_for(self, alias: str) -> tuple[str, ChatConfig]:
         chat_name = self.aliases[alias].chat

@@ -20,6 +20,7 @@ aliases:
     chat: homelab
     topic: 5                     # omit to post in the group's General topic
     description: Infrastructure alerts
+    # quiet_hours: "23:00-08:00"  # overrides defaults.quiet_hours
     # dedupe_window: 120         # overrides defaults.dedupe_window
     # silent_levels: [info]      # overrides defaults.silent_levels
   deploys:
@@ -32,6 +33,9 @@ aliases:
 defaults:
   dedupe_window: 60              # seconds; 0 disables deduplication
   silent_levels: [info, success]
+  # timezone: Europe/Madrid      # IANA name used to read quiet_hours (default UTC)
+  # quiet_hours: "23:00-08:00"   # no notification sound in this window
+  # quiet_exempt_levels: [critical]
   # level_prefix:
   #   info: "ℹ️"
   #   success: "✅"

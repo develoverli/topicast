@@ -52,6 +52,8 @@ curl -X POST http://localhost:8080/v1/messages \
 - **Idempotency** — retry a request with the same `Idempotency-Key` without double posting.
 - **Levels** — `info`, `success`, `warning`, `error`, `critical` add an emoji prefix and pick
   the notification sound.
+- **Quiet hours** — silence an alias between, say, 23:00 and 08:00, while `critical` still
+  rings through.
 - **Long messages** — split on paragraph boundaries, or truncated, or rejected. Your call.
 - **Files** — upload photos and documents, or point at a URL; send albums of up to 10 items.
 - **Edit and delete** — `PATCH` and `DELETE` a message you already sent.

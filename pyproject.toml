@@ -33,6 +33,9 @@ dependencies = [
     "pyyaml>=6.0,<7",
     "sqlalchemy[asyncio]>=2.0.54,<2.1",
     "structlog>=26.1",
+    # Ships the IANA time zone database: Windows and slim images do not have one,
+    # and quiet_hours needs it to read a local time.
+    "tzdata>=2026.1",
     "typer>=0.27,<1",
     "uvicorn[standard]>=0.53,<1",
 ]

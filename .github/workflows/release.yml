@@ -24,6 +24,38 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
+  lockfile:
+    # release-please bumps the version in pyproject.toml; uv.lock only catches up here.
+    # Builds use `uv sync --frozen`, so this is tidiness, not a blocker.
+    name: Sync uv.lock
+    needs: release-please
+    if: needs.release-please.outputs.released == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.12.15"
+          enable-cache: true
+
+      - name: Refresh the lockfile when the version drifted
+        run: |
+          set -euo pipefail
+          uv lock
+          if git diff --quiet uv.lock; then
+            echo "uv.lock is already in sync"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore: sync uv.lock with the released version" uv.lock
+          git push
+
   publish:
     name: Publish image
     needs: release-please

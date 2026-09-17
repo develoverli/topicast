@@ -59,6 +59,15 @@ appear in proxy logs and browser history. Mitigations, in order of importance:
 - Terminate TLS in a reverse proxy; topicast speaks plain HTTP.
 - Set `TOPICAST_TRUSTED_PROXIES` to your proxy so forwarded client IPs are trustworthy.
 
+## Browsers
+
+CORS is off unless `TOPICAST_CORS_ORIGINS` lists origins explicitly; the wildcard is refused at
+startup. Only `GET` and `POST` are exposed to browsers, and credentials are never allowed.
+
+Remember what a browser call implies: the API key ships to the visitor. Treat any key used in a
+web page as public, scope it to one alias with `--scope send`, and prefer keeping the key in
+your own backend.
+
 ## Input handling
 
 - **Markup**: text is passed to Telegram as sent. If you interpolate user input into `HTML` or

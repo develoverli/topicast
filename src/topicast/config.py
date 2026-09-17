@@ -15,6 +15,7 @@ from enum import StrEnum
 from functools import lru_cache
 from pathlib import Path
 from typing import Annotated, Any, Literal, Self
+from urllib.parse import urlparse
 
 import yaml
 from pydantic import (
@@ -74,6 +75,38 @@ class Settings(BaseSettings):
     poll_interval: float = Field(default=1.0, gt=0, le=60)
     max_attempts: int = Field(default=5, ge=1, le=50)
     trusted_proxies: str = "127.0.0.1"
+    cors_origins: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Browser origins allowed to call the API, comma separated. "
+            "Empty (the default) disables CORS. The wildcard is rejected on purpose."
+        ),
+    )
+
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def _split_origins(cls, value: Any) -> Any:
+        if isinstance(value, str):
+            return [item.strip() for item in value.split(",") if item.strip()]
+        return value
+
+    @field_validator("cors_origins", mode="after")
+    @classmethod
+    def _check_origins(cls, value: list[str]) -> list[str]:
+        cleaned: list[str] = []
+        for origin in value:
+            if origin == "*":
+                msg = (
+                    "TOPICAST_CORS_ORIGINS does not accept '*': any website could then use a "
+                    "visitor's API key. List the origins explicitly."
+                )
+                raise ValueError(msg)
+            parsed = urlparse(origin.rstrip("/"))
+            if parsed.scheme not in {"http", "https"} or not parsed.netloc or parsed.path:
+                msg = f"invalid origin '{origin}': use scheme://host[:port], e.g. https://panel.example.com"
+                raise ValueError(msg)
+            cleaned.append(f"{parsed.scheme}://{parsed.netloc}")
+        return cleaned
 
     @model_validator(mode="after")
     def _check_secret(self) -> Self:

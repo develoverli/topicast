@@ -29,6 +29,7 @@ topicast reads two things:
 | `TOPICAST_MAX_ATTEMPTS` | `5` | Delivery attempts before a message is marked `failed`. |
 | `TOPICAST_POLL_INTERVAL` | `1.0` | Queue poll interval in seconds. |
 | `TOPICAST_TRUSTED_PROXIES` | `127.0.0.1` | Proxies allowed to set `X-Forwarded-For`. |
+| `TOPICAST_CORS_ORIGINS` | *(empty)* | Browser origins allowed to call the API, comma separated. Empty disables CORS. See [Calling from a browser](#calling-from-a-browser). |
 
 ## config.yaml
 
@@ -116,6 +117,36 @@ The names your services use in `"to"`.
 | `github.secret` | *(none)* | When set, `X-Hub-Signature-256` is required and verified. |
 | `github.events` | all supported | Restrict which GitHub events produce a message. |
 | `templates` | `{}` | Named Jinja2 templates for the generic webhook. |
+
+## Calling from a browser
+
+By default no browser can call topicast: without CORS headers the request is blocked. Server to
+server callers are unaffected — CORS is a browser rule.
+
+If you are building a small internal panel, list its origins:
+
+```bash
+TOPICAST_CORS_ORIGINS=https://panel.example.com,http://localhost:5173
+```
+
+```
+GET  /v1/messages/{id}   allowed
+POST /v1/messages        allowed
+PATCH, DELETE            not exposed to browsers
+```
+
+Allowed request headers are `Authorization`, `X-API-Key`, `Content-Type` and
+`Idempotency-Key`; `X-Request-ID` and `Retry-After` are readable from the response. Cookies are
+never accepted, so `Access-Control-Allow-Credentials` is not sent.
+
+!!! danger "A key in a browser is a public key"
+    Anything the page can send, a visitor can read in DevTools and replay. Use a key restricted
+    to `--scope send` and to the single alias that panel needs, and rotate it when the page
+    changes hands. If the browser is only the messenger for your own backend, keep the key in
+    the backend and leave CORS off.
+
+`*` is rejected on purpose: with it, any website could use a visitor's key. Origins must be
+`scheme://host[:port]`; a wrong value stops startup with an explicit error.
 
 ## Deduplication
 

@@ -9,6 +9,7 @@ from contextlib import asynccontextmanager
 
 import structlog
 from fastapi import FastAPI, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 
 from topicast import __version__, metrics
@@ -86,6 +87,20 @@ def create_app(settings: Settings | None = None, runtime: Runtime | None = None)
         )
         structlog.contextvars.clear_contextvars()
         return response
+
+    if settings.cors_origins:
+        # Added last so it wraps everything, including error responses and preflights.
+        # No credentials: keys travel in a header, never in cookies.
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=settings.cors_origins,
+            allow_credentials=False,
+            allow_methods=["GET", "POST"],
+            allow_headers=["Authorization", "X-API-Key", "Content-Type", "Idempotency-Key"],
+            expose_headers=["X-Request-ID", "Retry-After"],
+            max_age=600,
+        )
+        log.info("cors_enabled", origins=settings.cors_origins)
 
     install_error_handlers(app)
     app.include_router(messages.router)

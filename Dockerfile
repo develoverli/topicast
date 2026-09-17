@@ -17,7 +17,9 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 COPY pyproject.toml uv.lock README.md LICENSE ./
 COPY src ./src
-RUN --mount=type=cache,target=/root/.cache/uv uv sync --locked --no-dev
+# --no-editable copies the package into the venv; an editable install would point at
+# /app/src, which does not exist in the runtime stage.
+RUN --mount=type=cache,target=/root/.cache/uv uv sync --locked --no-dev --no-editable
 
 
 FROM python:3.12-slim-bookworm AS runtime

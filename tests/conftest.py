@@ -14,7 +14,14 @@ from httpx import ASGITransport, AsyncClient
 from topicast.api.app import create_app
 from topicast.config import AliasConfig, AppConfig, BotConfig, ChatConfig, Defaults, Settings
 from topicast.delivery.formatting import ParseMode
-from topicast.delivery.telegram import BotIdentity, DeliveryError, MediaItem, Target
+from topicast.delivery.telegram import (
+    BotIdentity,
+    ChatInfo,
+    DeliveryError,
+    MediaItem,
+    MemberInfo,
+    Target,
+)
 from topicast.runtime import Runtime
 from topicast.security import ALL_ALIASES, Scope
 
@@ -40,6 +47,15 @@ class FakeGateway:
     deleted: list[tuple[int, ...]] = field(default_factory=list)
     errors: list[DeliveryError] = field(default_factory=list)
     bot_error: DeliveryError | None = None
+    chat_error: DeliveryError | None = None
+    chat_info: ChatInfo = field(
+        default_factory=lambda: ChatInfo(
+            id=-1001234567890, type="supergroup", title="homelab", is_forum=True
+        )
+    )
+    member_info: MemberInfo = field(
+        default_factory=lambda: MemberInfo(status="administrator", can_post=True)
+    )
     _ids: itertools.count[int] = field(default_factory=lambda: itertools.count(1000))
 
     def _maybe_fail(self) -> None:
@@ -56,6 +72,16 @@ class FakeGateway:
         if self.bot_error is not None:
             raise self.bot_error
         return BotIdentity(id=1, username=f"{bot}_bot")
+
+    async def get_chat(self, bot: str, chat_id: int | str) -> ChatInfo:
+        if self.chat_error is not None:
+            raise self.chat_error
+        return self.chat_info
+
+    async def get_member(self, bot: str, chat_id: int | str, user_id: int) -> MemberInfo:
+        if self.chat_error is not None:
+            raise self.chat_error
+        return self.member_info
 
     async def send_text(
         self,

@@ -100,6 +100,15 @@ Delivered and failed messages are deleted after `TOPICAST_RETENTION_DAYS` (7 by 
 Idempotency keys are forgotten after `TOPICAST_IDEMPOTENCY_HOURS` (24). Uploaded files are
 removed as soon as the message is delivered; orphans are swept after 24 hours.
 
+## First stop: doctor
+
+```bash
+docker compose exec topicast topicast doctor          # token, chat, permissions, topics
+docker compose exec topicast topicast doctor --probe  # plus a real message per alias
+```
+
+It answers most "why is nothing arriving" questions in one screen. See [CLI](cli.md#doctor).
+
 ## Common problems
 
 | Symptom | Cause and fix |

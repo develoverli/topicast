@@ -80,6 +80,12 @@ curl -X POST "http://127.0.0.1:8080/v1/messages?wait=true" \
 
 Interactive docs: <http://127.0.0.1:8080/docs>.
 
+Something not arriving? Ask Telegram instead of guessing:
+
+```bash
+docker compose exec topicast topicast doctor --probe
+```
+
 ## Without Docker
 
 ```bash

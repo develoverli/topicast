@@ -92,12 +92,38 @@ class BotIdentity:
     username: str | None
 
 
+@dataclass(frozen=True, slots=True)
+class ChatInfo:
+    id: int | str
+    type: str
+    title: str | None
+    is_forum: bool
+
+
+@dataclass(frozen=True, slots=True)
+class MemberInfo:
+    status: str
+    can_post: bool
+
+    @property
+    def is_admin(self) -> bool:
+        return self.status in {"administrator", "creator"}
+
+    @property
+    def is_member(self) -> bool:
+        return self.status in {"administrator", "creator", "member", "restricted"}
+
+
 class TelegramGateway(Protocol):
     async def start(self) -> None: ...
 
     async def close(self) -> None: ...
 
     async def get_me(self, bot: str) -> BotIdentity: ...
+
+    async def get_chat(self, bot: str, chat_id: int | str) -> ChatInfo: ...
+
+    async def get_member(self, bot: str, chat_id: int | str, user_id: int) -> MemberInfo: ...
 
     async def send_text(
         self,
@@ -198,6 +224,29 @@ class PTBGateway:
         except TelegramError as exc:
             raise classify(exc) from exc
         return BotIdentity(id=me.id, username=me.username)
+
+    async def get_chat(self, bot: str, chat_id: int | str) -> ChatInfo:
+        try:
+            chat = await self._bot(bot).get_chat(chat_id)
+        except TelegramError as exc:
+            raise classify(exc) from exc
+        return ChatInfo(
+            id=chat.id,
+            type=chat.type,
+            title=chat.title,
+            is_forum=bool(getattr(chat, "is_forum", False)),
+        )
+
+    async def get_member(self, bot: str, chat_id: int | str, user_id: int) -> MemberInfo:
+        try:
+            member = await self._bot(bot).get_chat_member(chat_id, user_id)
+        except TelegramError as exc:
+            raise classify(exc) from exc
+        status = str(member.status)
+        can_post = status in {"administrator", "creator"} or (
+            status == "member" or bool(getattr(member, "can_send_messages", False))
+        )
+        return MemberInfo(status=status, can_post=can_post)
 
     async def send_text(
         self,

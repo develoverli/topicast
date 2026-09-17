@@ -60,7 +60,8 @@ curl -X POST http://localhost:8080/v1/messages \
 - **Slack and Discord compatible** — point any tool that only speaks "Slack webhook" or
   "Discord webhook" (Watchtower, Portainer, Sonarr, Netdata, Gitea…) at topicast and it posts
   to Telegram instead.
-- **Operable** — `/healthz`, `/readyz`, Prometheus `/metrics`, JSON logs, a CLI, SQLite storage.
+- **Operable** — `/healthz`, `/readyz`, Prometheus `/metrics`, JSON logs, SQLite storage, and
+  a `topicast doctor` that checks your token, chat, permissions and topics against Telegram.
 
 ## Quickstart
 

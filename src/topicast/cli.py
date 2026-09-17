@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import secrets
 from pathlib import Path
 from typing import Annotated
@@ -126,6 +127,65 @@ def check_config() -> None:
             f"  {name:<20} → chat {chat.id} ({alias.chat}), {topic}, "
             f"dedupe {config.dedupe_window(name)}s, bot {chat.bot}"
         )
+
+
+@app.command()
+def doctor(
+    probe: Annotated[
+        bool,
+        typer.Option(
+            "--probe",
+            help="Also send a real message to every alias and delete it again.",
+        ),
+    ] = False,
+) -> None:
+    """Check the deployment against Telegram: token, chat, permissions, topics."""
+    from topicast.delivery.telegram import DeliveryError, PTBGateway
+    from topicast.doctor import Report, Status, run_doctor
+
+    settings = _settings()
+    try:
+        config = load_app_config(settings.config_file)
+    except ConfigError as exc:
+        _fail(str(exc))
+        return
+
+    async def run() -> Report:
+        run_migrations(settings.database_path)
+        db = Database(settings.database_path)
+        gateway = PTBGateway({n: b.token.get_secret_value() for n, b in config.bots.items()})
+        # A bad token is reported as a failed check, not as a crash.
+        with contextlib.suppress(DeliveryError):
+            await gateway.start()
+        try:
+            return await run_doctor(settings, config, gateway, db, probe=probe)
+        finally:
+            await gateway.close()
+            await db.dispose()
+
+    report = asyncio.run(run())
+    marks = {
+        Status.OK: ("✔", typer.colors.GREEN),
+        Status.WARN: ("!", typer.colors.YELLOW),
+        Status.FAIL: ("✖", typer.colors.RED),
+    }
+    for check in report.checks:
+        mark, color = marks[check.status]
+        typer.secho(f"{mark} {check.name}: {check.detail}", fg=color)
+        if check.hint:
+            typer.secho(f"  → {check.hint}", fg=typer.colors.BRIGHT_BLACK)
+
+    counts = report.counts
+    typer.echo(
+        f"\n{counts[Status.OK]} ok, {counts[Status.WARN]} warnings, {counts[Status.FAIL]} failures"
+    )
+    if not probe:
+        typer.secho(
+            "Run `topicast doctor --probe` to send a real test message to every alias.",
+            fg=typer.colors.BRIGHT_BLACK,
+        )
+    if report.failed:
+        raise typer.Exit(code=1)
 
 
 @app.command()

@@ -31,7 +31,13 @@ jobs:
           enable-cache: true
 
       - name: Install dependencies
-        run: uv sync --locked --all-groups --python ${{ matrix.python-version }}
+        run: uv sync --frozen --all-groups --python ${{ matrix.python-version }}
+
+      # Only on PRs: release commits bump the version in pyproject.toml before the
+      # lockfile catches up, which is expected drift, not a mistake.
+      - name: Lockfile is up to date
+        if: github.event_name == 'pull_request'
+        run: uv lock --check
 
       - name: Ruff (lint)
         run: uv run ruff check --output-format=github .

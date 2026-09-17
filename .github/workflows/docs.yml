@@ -31,7 +31,7 @@ jobs:
           version: "0.12.15"
           enable-cache: true
 
-      - run: uv sync --locked --group docs
+      - run: uv sync --frozen --group docs
 
       - run: uv run mkdocs build --strict
 

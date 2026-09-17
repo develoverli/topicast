@@ -8,37 +8,8 @@ permissions:
   contents: read
 
 jobs:
-  lockfile:
-    # release-please bumps the version in pyproject.toml, which leaves uv.lock stale and
-    # breaks every `uv sync --locked`. Fix it on main before the tag is cut.
-    name: Keep uv.lock in sync
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v5
-
-      - uses: astral-sh/setup-uv@v7
-        with:
-          version: "0.12.15"
-          enable-cache: true
-
-      - name: Refresh the lockfile when the version drifted
-        run: |
-          set -euo pipefail
-          uv lock
-          if git diff --quiet uv.lock; then
-            echo "uv.lock is already in sync"
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "chore: sync uv.lock with the released version" uv.lock
-          git push
-
   release-please:
     name: Prepare release
-    needs: lockfile
     runs-on: ubuntu-latest
     permissions:
       contents: write

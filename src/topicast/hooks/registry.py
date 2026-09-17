@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from topicast.hooks import HookAdapter
 from topicast.hooks.alertmanager import AlertmanagerAdapter
+from topicast.hooks.discord import DiscordAdapter
 from topicast.hooks.generic import GenericAdapter
 from topicast.hooks.github import GitHubAdapter
+from topicast.hooks.slack import SlackAdapter
 from topicast.hooks.uptime_kuma import UptimeKumaAdapter
 
 _alertmanager = AlertmanagerAdapter()
@@ -16,4 +18,7 @@ ADAPTERS: dict[str, HookAdapter] = {
     "uptime-kuma": UptimeKumaAdapter(),
     "alertmanager": _alertmanager,
     "grafana": _alertmanager,
+    # Compatibility endpoints: tools that only speak Slack or Discord webhooks.
+    "slack": SlackAdapter(),
+    "discord": DiscordAdapter(),
 }

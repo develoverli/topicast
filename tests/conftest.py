@@ -181,3 +181,8 @@ async def client(runtime: Runtime, api_key: str) -> AsyncIterator[AsyncClient]:
         headers={"Authorization": f"Bearer {api_key}"},
     ) as http:
         yield http
+
+
+@pytest.fixture
+def app_config() -> AppConfig:
+    return make_config()

@@ -47,6 +47,7 @@ Everything lives in one container plus one SQLite file. No Redis, no Postgres, n
 - [Telegram setup](telegram-setup.md) — bot, group, topics and the ids you need.
 - [Configuration](configuration.md) — aliases, levels, dedupe, rate limits.
 - [API reference](api.md) — endpoints, fields, status codes, errors.
-- [Webhooks](webhooks.md) — GitHub, Uptime Kuma, Alertmanager, Grafana, generic.
+- [Webhooks](webhooks.md) — GitHub, Uptime Kuma, Alertmanager, Grafana, Slack- and
+  Discord-compatible endpoints, generic.
 - [Deployment](deployment.md) — Compose, reverse proxy, Tailscale, Dokploy.
 - [Security](security.md) — keys, scopes, exposure, hardening.

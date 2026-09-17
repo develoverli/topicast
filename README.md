@@ -57,6 +57,9 @@ curl -X POST http://localhost:8080/v1/messages \
 - **Edit and delete** — `PATCH` and `DELETE` a message you already sent.
 - **Webhooks in** — GitHub (signature-verified), Uptime Kuma, Alertmanager/Grafana, and a
   generic endpoint with your own Jinja2 template.
+- **Slack and Discord compatible** — point any tool that only speaks "Slack webhook" or
+  "Discord webhook" (Watchtower, Portainer, Sonarr, Netdata, Gitea…) at topicast and it posts
+  to Telegram instead.
 - **Operable** — `/healthz`, `/readyz`, Prometheus `/metrics`, JSON logs, a CLI, SQLite storage.
 
 ## Quickstart
@@ -125,6 +128,8 @@ Point any of these at topicast and they land in the right topic:
 POST /v1/hooks/github/deploys?token=<key>
 POST /v1/hooks/uptime-kuma/alerts?token=<key>
 POST /v1/hooks/alertmanager/alerts?token=<key>
+POST /v1/hooks/slack/alerts?token=<key>        # tools that only speak Slack
+POST /v1/hooks/discord/alerts?token=<key>      # …or only Discord
 POST /v1/hooks/generic/alerts?token=<key>&template=plain
 ```
 

@@ -12,6 +12,8 @@ POST /v1/hooks/{source}/{alias}?token=<key>
 | `uptime-kuma` | Uptime Kuma "Webhook" notifications |
 | `alertmanager` | Prometheus Alertmanager |
 | `grafana` | Grafana unified alerting (same payload as Alertmanager) |
+| `slack` | Anything that speaks "Slack incoming webhook" |
+| `discord` | Anything that speaks "Discord webhook URL" |
 | `generic` | Anything that posts JSON |
 
 ## Create a webhook key first
@@ -78,6 +80,51 @@ In Grafana: **Alerting** → **Contact points** → **Webhook**, same URL with
 
 Severity maps to levels (`critical` → critical, `warning` → warning, resolved → success), and
 each alert line shows its `summary` annotation plus the `instance` label.
+
+## Slack and Discord compatible
+
+Plenty of self-hosted tools only offer a "Slack webhook URL" or a "Discord webhook URL" field.
+Paste a topicast URL there and the notification lands in your Telegram topic — no code, no
+plugin, no Slack or Discord account:
+
+```
+https://topicast.example.com/v1/hooks/slack/alerts?token=tc_...
+https://topicast.example.com/v1/hooks/discord/alerts?token=tc_...
+```
+
+Works with Watchtower, Portainer, Sonarr and Radarr, Netdata, Gitea, Healthchecks.io, Zabbix,
+and anything else that emits those payloads.
+
+**What is translated**
+
+| Slack | Discord | Becomes |
+|---|---|---|
+| `text` | `content` | The message body |
+| `blocks` (section, header, context) | `embeds[].description` | Body lines |
+| `attachments[].title` + `title_link` | `embeds[].title` + `url` | A bold line, linked when a URL is present |
+| `attachments[].fields` | `embeds[].fields` | `<b>Name:</b> value` lines |
+| `attachments[].footer` | `embeds[].footer.text` | An italic closing line |
+| `attachments[].color` | `embeds[].color` | The message [level](configuration.md#levels) |
+| — | `username` | A bold heading when there is no `content` |
+
+Colors decide the level, so the emoji prefix and the notification sound follow what the tool
+already meant: `good` or green means success, `warning` or yellow means warning, `danger` or
+red means error.
+
+Slack mrkdwn (`*bold*`, `_italic_`, `` `code` ``, `<url|label>`) and Discord markdown
+(`**bold**`, `*italic*`, `~~strike~~`, `[label](url)`) are converted to Telegram HTML.
+Everything else is escaped, so a payload cannot inject markup.
+
+Try it without leaving the terminal:
+
+```bash
+curl -X POST "http://localhost:8080/v1/hooks/slack/alerts?token=tc_..." \
+  -H "Content-Type: application/json" \
+  -d '{"attachments":[{"color":"danger","title":"Disk full","text":"/var at 98%"}]}'
+```
+
+Not supported, because Telegram has no equivalent: interactive components, thumbnails and
+images inside embeds, mentions, and ephemeral messages. The text is kept; the rest is dropped.
 
 ## Generic JSON
 

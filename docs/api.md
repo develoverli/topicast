@@ -31,6 +31,7 @@ Queues a message. Returns `202` with an id; add `?wait=true` to wait for deliver
 | `on_overflow` | `split` · `truncate` · `reject` | `split` | What to do with text over 4096 characters. |
 | `media` | array | `[]` | `[{ "type": "photo"\|"document", "url": "...", "filename": "..." }]`, up to 10. |
 | `send_at` | string | — | ISO 8601 with a timezone. Delivers then instead of now, up to 365 days ahead. |
+| `buttons` | array | `[]` | Link buttons: a flat list is one row, nested lists are rows. Max 8 rows of 3. |
 
 ```bash
 curl -X POST http://localhost:8080/v1/messages \
@@ -98,10 +99,33 @@ else is sent as a document. Two or more files become an album (all of the same t
 
 `status` is one of `queued`, `sending`, `delivered`, `failed`, `deleted`.
 
+### Buttons
+
+```json
+{
+  "to": "alerts",
+  "text": "Disk at 91% on nas",
+  "level": "warning",
+  "buttons": [
+    [{"text": "Open dashboard", "url": "https://grafana.local/d/abc"}],
+    [{"text": "Runbook", "url": "https://wiki.local/runbook"}]
+  ]
+}
+```
+
+A flat list (`[{...}, {...}]`) is a single row; nest lists to stack rows. URLs must start with
+`http://`, `https://` or `tg://`, at most 8 rows of 3 buttons.
+
+Only link buttons exist: callback buttons would require topicast to listen for Telegram
+updates, and it never does. When a message is split into several parts, the buttons go on the
+last one, where the reader ends up.
+
 ### Scheduling
 
 ```bash
-curl -X POST http://localhost:8080/v1/messages   -H "Authorization: Bearer $KEY" -H "Content-Type: application/json"   -d '{"to": "alerts", "text": "Certificate expires today", "send_at": "2026-12-01T08:00:00Z"}'
+curl -X POST http://localhost:8080/v1/messages \
+  -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" \
+  -d '{"to": "alerts", "text": "Certificate expires today", "send_at": "2026-12-01T08:00:00Z"}'
 ```
 
 The answer is `202` with `scheduled_for` set. The message waits in the queue until then and

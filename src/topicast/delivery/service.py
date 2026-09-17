@@ -24,7 +24,14 @@ from topicast.db.models import utcnow
 from topicast.delivery import formatting
 from topicast.delivery.formatting import CAPTION_LIMIT, Overflow, ParseMode
 from topicast.delivery.ratelimit import RateLimiter, bot_key, chat_key
-from topicast.delivery.telegram import DeliveryError, MediaItem, Target, TelegramGateway
+from topicast.delivery.telegram import (
+    Button,
+    DeliveryError,
+    Keyboard,
+    MediaItem,
+    Target,
+    TelegramGateway,
+)
 
 log = structlog.get_logger(__name__)
 
@@ -60,6 +67,7 @@ class OutgoingMessage:
     media: list[MediaItem] = field(default_factory=list)
     media_digests: list[str] = field(default_factory=list)
     send_at: datetime | None = None
+    buttons: Keyboard = field(default_factory=list)
     source: str = "api"
 
 
@@ -85,6 +93,10 @@ def target_for(config: AppConfig, alias: str) -> tuple[str, Target]:
 
 def media_items(payload: dict[str, Any]) -> list[MediaItem]:
     return [MediaItem(**item) for item in payload.get("media", [])]
+
+
+def keyboard_of(payload: dict[str, Any]) -> Keyboard:
+    return [[Button(**button) for button in row] for row in payload.get("buttons") or []]
 
 
 def spool_files(payload: dict[str, Any]) -> list[Path]:
@@ -168,6 +180,7 @@ class MessageService:
             "silent": silent,
             "disable_preview": out.disable_preview,
             "preview": text[:PREVIEW_CHARS],
+            "buttons": [[{"text": b.text, "url": b.url} for b in row] for row in out.buttons],
             "steps_done": 0,
         }
         return kind, payload
@@ -199,6 +212,7 @@ class MessageService:
                 out.disable_preview,
                 out.dedupe_key,
                 out.overflow,
+                [[b.text, b.url] for row in out.buttons for b in row],
                 [m.url for m in out.media],
                 out.media_digests,
             ]

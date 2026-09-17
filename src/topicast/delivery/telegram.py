@@ -14,6 +14,8 @@ from typing import Literal, Protocol
 
 from telegram import (
     Bot,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
     InputMediaDocument,
     InputMediaPhoto,
     LinkPreviewOptions,
@@ -80,6 +82,17 @@ class MediaItem:
 
 
 @dataclass(frozen=True, slots=True)
+class Button:
+    """A link button. Callback buttons would need an update listener, which topicast is not."""
+
+    text: str
+    url: str
+
+
+Keyboard = list[list[Button]]
+
+
+@dataclass(frozen=True, slots=True)
 class Target:
     bot: str
     chat_id: int | str
@@ -133,6 +146,7 @@ class TelegramGateway(Protocol):
         parse_mode: ParseMode | None,
         silent: bool,
         disable_preview: bool,
+        keyboard: Keyboard | None = None,
     ) -> int: ...
 
     async def send_media(
@@ -143,6 +157,7 @@ class TelegramGateway(Protocol):
         *,
         parse_mode: ParseMode | None,
         silent: bool,
+        keyboard: Keyboard | None = None,
     ) -> int: ...
 
     async def send_media_group(
@@ -166,6 +181,14 @@ class TelegramGateway(Protocol):
     ) -> None: ...
 
     async def delete(self, target: Target, message_ids: Sequence[int]) -> None: ...
+
+
+def _markup(keyboard: Keyboard | None) -> InlineKeyboardMarkup | None:
+    if not keyboard:
+        return None
+    return InlineKeyboardMarkup(
+        [[InlineKeyboardButton(text=b.text, url=b.url) for b in row] for row in keyboard]
+    )
 
 
 def _seconds(value: int | timedelta) -> float:
@@ -256,6 +279,7 @@ class PTBGateway:
         parse_mode: ParseMode | None,
         silent: bool,
         disable_preview: bool,
+        keyboard: Keyboard | None = None,
     ) -> int:
         try:
             msg = await self._bot(target.bot).send_message(
@@ -265,6 +289,7 @@ class PTBGateway:
                 parse_mode=parse_mode,
                 disable_notification=silent,
                 link_preview_options=LinkPreviewOptions(is_disabled=disable_preview),
+                reply_markup=_markup(keyboard),
             )
         except TelegramError as exc:
             raise classify(exc) from exc
@@ -278,6 +303,7 @@ class PTBGateway:
         *,
         parse_mode: ParseMode | None,
         silent: bool,
+        keyboard: Keyboard | None = None,
     ) -> int:
         bot = self._bot(target.bot)
         msg: Message
@@ -290,6 +316,7 @@ class PTBGateway:
                     message_thread_id=target.thread_id,
                     parse_mode=parse_mode,
                     disable_notification=silent,
+                    reply_markup=_markup(keyboard),
                 )
             else:
                 msg = await bot.send_document(
@@ -300,6 +327,7 @@ class PTBGateway:
                     message_thread_id=target.thread_id,
                     parse_mode=parse_mode,
                     disable_notification=silent,
+                    reply_markup=_markup(keyboard),
                 )
         except TelegramError as exc:
             raise classify(exc) from exc

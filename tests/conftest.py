@@ -18,6 +18,7 @@ from topicast.delivery.telegram import (
     BotIdentity,
     ChatInfo,
     DeliveryError,
+    Keyboard,
     MediaItem,
     MemberInfo,
     Target,
@@ -36,6 +37,7 @@ class SentMessage:
     silent: bool
     kind: str = "text"
     media: tuple[MediaItem, ...] = ()
+    keyboard: Keyboard | None = None
 
 
 @dataclass
@@ -91,9 +93,10 @@ class FakeGateway:
         parse_mode: ParseMode | None,
         silent: bool,
         disable_preview: bool,
+        keyboard: Keyboard | None = None,
     ) -> int:
         self._maybe_fail()
-        self.sent.append(SentMessage(target, text, parse_mode, silent))
+        self.sent.append(SentMessage(target, text, parse_mode, silent, keyboard=keyboard))
         return next(self._ids)
 
     async def send_media(
@@ -104,10 +107,19 @@ class FakeGateway:
         *,
         parse_mode: ParseMode | None,
         silent: bool,
+        keyboard: Keyboard | None = None,
     ) -> int:
         self._maybe_fail()
         self.sent.append(
-            SentMessage(target, caption, parse_mode, silent, kind=item.type, media=(item,))
+            SentMessage(
+                target,
+                caption,
+                parse_mode,
+                silent,
+                kind=item.type,
+                media=(item,),
+                keyboard=keyboard,
+            )
         )
         return next(self._ids)
 

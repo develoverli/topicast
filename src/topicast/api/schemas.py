@@ -13,6 +13,8 @@ from topicast.delivery.formatting import Overflow, ParseMode
 
 MAX_TEXT = 40_000
 MAX_SCHEDULE_DAYS = 365
+MAX_BUTTON_ROWS = 8
+MAX_BUTTONS_PER_ROW = 3
 Alias = Annotated[str, Field(pattern=r"^[a-z0-9][a-z0-9_-]{0,63}$", examples=["alerts"])]
 
 
@@ -22,6 +24,23 @@ class MediaInput(BaseModel):
     type: Literal["photo", "document"] = "document"
     url: str = Field(description="Public URL Telegram can download.")
     filename: str | None = None
+
+
+class ButtonInput(BaseModel):
+    """A link button under the message. Telegram has no callbacks without a listener."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    text: str = Field(min_length=1, max_length=64)
+    url: str = Field(description="http(s) or tg:// link.")
+
+    @field_validator("url")
+    @classmethod
+    def _check_url(cls, value: str) -> str:
+        if not value.startswith(("http://", "https://", "tg://")):
+            msg = "button urls must start with http://, https:// or tg://"
+            raise ValueError(msg)
+        return value
 
 
 class SendRequest(BaseModel):
@@ -64,6 +83,15 @@ class SendRequest(BaseModel):
         default=Overflow.SPLIT, description="What to do with text over Telegram's limit."
     )
     media: list[MediaInput] = Field(default_factory=list, max_length=10)
+    buttons: list[ButtonInput] | list[list[ButtonInput]] = Field(
+        default_factory=list,
+        description=(
+            "Link buttons under the message. A flat list is one row; "
+            f"nest lists for several rows. Max {MAX_BUTTON_ROWS} rows of "
+            f"{MAX_BUTTONS_PER_ROW}."
+        ),
+        examples=[[{"text": "Open dashboard", "url": "https://grafana.local/d/abc"}]],
+    )
     send_at: datetime | None = Field(
         default=None,
         description=(
@@ -89,6 +117,29 @@ class SendRequest(BaseModel):
             msg = f"send_at is more than {MAX_SCHEDULE_DAYS} days away"
             raise ValueError(msg)
         return value
+
+    @property
+    def keyboard(self) -> list[list[ButtonInput]]:
+        """Normalise the flat and the nested form into rows."""
+        if not self.buttons:
+            return []
+        first = self.buttons[0]
+        if isinstance(first, list):
+            rows: list[list[ButtonInput]] = [row for row in self.buttons if row]  # type: ignore[misc]
+            return rows
+        flat: list[ButtonInput] = [b for b in self.buttons if isinstance(b, ButtonInput)]
+        return [flat]
+
+    @model_validator(mode="after")
+    def _check_buttons(self) -> Self:
+        rows = self.keyboard
+        if len(rows) > MAX_BUTTON_ROWS:
+            msg = f"at most {MAX_BUTTON_ROWS} button rows"
+            raise ValueError(msg)
+        if any(len(row) > MAX_BUTTONS_PER_ROW for row in rows):
+            msg = f"at most {MAX_BUTTONS_PER_ROW} buttons per row"
+            raise ValueError(msg)
+        return self
 
     @model_validator(mode="after")
     def _needs_content(self) -> Self:

@@ -16,7 +16,7 @@ from topicast.api.schemas import EditRequest, MessageResponse, Problem, SendRequ
 from topicast.api.uploads import parse_form
 from topicast.db import MessageStatus
 from topicast.delivery.service import EnqueueResult, OutgoingMessage, ServiceError
-from topicast.delivery.telegram import MediaItem
+from topicast.delivery.telegram import Button, MediaItem
 from topicast.errors import ProblemError
 from topicast.keys import Principal
 from topicast.runtime import Runtime
@@ -191,6 +191,7 @@ async def send_message(
             overflow=payload.on_overflow,
             media=[MediaItem(type=m.type, url=m.url, filename=m.filename) for m in payload.media],
             send_at=payload.send_at,
+            buttons=[[Button(text=b.text, url=b.url) for b in row] for row in payload.keyboard],
         )
 
     try:

@@ -26,7 +26,13 @@ from topicast.db import Database, Message, MessageStatus
 from topicast.db.models import FINAL_STATUSES, utcnow
 from topicast.delivery.formatting import ParseMode
 from topicast.delivery.ratelimit import RateLimiter, bot_key, chat_key
-from topicast.delivery.service import MessageService, media_items, spool_files, target_for
+from topicast.delivery.service import (
+    MessageService,
+    keyboard_of,
+    media_items,
+    spool_files,
+    target_for,
+)
 from topicast.delivery.telegram import DeliveryError, Target, TelegramGateway
 
 log = structlog.get_logger(__name__)
@@ -235,6 +241,7 @@ class DeliveryWorker:
         disable_preview = bool(payload.get("disable_preview"))
         items = media_items(payload)
         caption: str | None = payload.get("caption")
+        keyboard = keyboard_of(payload) or None  # None keeps the Bot API call clean
         steps: list[Step] = []
 
         if len(items) == 1:
@@ -243,7 +250,12 @@ class DeliveryWorker:
             async def send_one(mode: ParseMode | None) -> list[int]:
                 return [
                     await self.gateway.send_media(
-                        target, item, caption, parse_mode=mode, silent=silent
+                        target,
+                        item,
+                        caption,
+                        parse_mode=mode,
+                        silent=silent,
+                        keyboard=keyboard if not payload.get("texts") else None,
                     )
                 ]
 
@@ -257,9 +269,14 @@ class DeliveryWorker:
 
             steps.append(send_group)
 
-        for chunk in payload.get("texts", []):
+        texts: list[str] = payload.get("texts", [])
+        for index, chunk in enumerate(texts):
+            last = index == len(texts) - 1
 
-            async def send_text(mode: ParseMode | None, chunk: str = chunk) -> list[int]:
+            async def send_text(
+                mode: ParseMode | None, chunk: str = chunk, last: bool = last
+            ) -> list[int]:
+                # Buttons ride on the final message, where the reader ends up.
                 return [
                     await self.gateway.send_text(
                         target,
@@ -267,6 +284,7 @@ class DeliveryWorker:
                         parse_mode=mode,
                         silent=silent,
                         disable_preview=disable_preview,
+                        keyboard=keyboard if last else None,
                     )
                 ]
 

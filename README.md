@@ -54,6 +54,8 @@ curl -X POST http://localhost:8080/v1/messages \
   the notification sound.
 - **Quiet hours** — silence an alias between, say, 23:00 and 08:00, while `critical` still
   rings through.
+- **Scheduling** — `send_at` delivers later; the queue survives restarts and you can cancel
+  before it goes out.
 - **Long messages** — split on paragraph boundaries, or truncated, or rejected. Your call.
 - **Files** — upload photos and documents, or point at a URL; send albums of up to 10 items.
 - **Edit and delete** — `PATCH` and `DELETE` a message you already sent.

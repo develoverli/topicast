@@ -2,16 +2,17 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from typing import Annotated, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from topicast.config import Level
-from topicast.db import Message
+from topicast.db import Message, MessageStatus
 from topicast.delivery.formatting import Overflow, ParseMode
 
 MAX_TEXT = 40_000
+MAX_SCHEDULE_DAYS = 365
 Alias = Annotated[str, Field(pattern=r"^[a-z0-9][a-z0-9_-]{0,63}$", examples=["alerts"])]
 
 
@@ -63,6 +64,31 @@ class SendRequest(BaseModel):
         default=Overflow.SPLIT, description="What to do with text over Telegram's limit."
     )
     media: list[MediaInput] = Field(default_factory=list, max_length=10)
+    send_at: datetime | None = Field(
+        default=None,
+        description=(
+            "Deliver at this time instead of now (ISO 8601, with a timezone). "
+            "Up to 365 days ahead. Cancel with DELETE before it is sent."
+        ),
+        examples=["2026-09-18T09:00:00Z"],
+    )
+
+    @field_validator("send_at")
+    @classmethod
+    def _check_send_at(cls, value: datetime | None) -> datetime | None:
+        if value is None:
+            return None
+        if value.tzinfo is None:
+            msg = "send_at needs a timezone, e.g. 2026-09-18T09:00:00Z"
+            raise ValueError(msg)
+        now = datetime.now(UTC)
+        if value <= now - timedelta(minutes=1):
+            msg = "send_at is in the past"
+            raise ValueError(msg)
+        if value > now + timedelta(days=MAX_SCHEDULE_DAYS):
+            msg = f"send_at is more than {MAX_SCHEDULE_DAYS} days away"
+            raise ValueError(msg)
+        return value
 
     @model_validator(mode="after")
     def _needs_content(self) -> Self:
@@ -89,6 +115,9 @@ class MessageResponse(BaseModel):
     attempts: int
     telegram_message_ids: list[int]
     created_at: datetime
+    scheduled_for: datetime | None = Field(
+        default=None, description="Set when the message waits for a `send_at` time."
+    )
     delivered_at: datetime | None = None
     fallback_reason: str | None = Field(
         default=None, description="Set when Telegram rejected the markup and plain text was sent."
@@ -106,6 +135,13 @@ class MessageResponse(BaseModel):
             attempts=message.attempts,
             telegram_message_ids=list(message.telegram_message_ids),
             created_at=message.created_at,
+            scheduled_for=(
+                message.next_attempt_at
+                if message.status == MessageStatus.QUEUED
+                and message.attempts == 0
+                and message.next_attempt_at > message.created_at
+                else None
+            ),
             delivered_at=message.delivered_at,
             fallback_reason=message.fallback_reason,
             last_error=message.last_error,

@@ -30,6 +30,7 @@ Queues a message. Returns `202` with an id; add `?wait=true` to wait for deliver
 | `dedupe_key` | string | — | Custom dedupe identity. |
 | `on_overflow` | `split` · `truncate` · `reject` | `split` | What to do with text over 4096 characters. |
 | `media` | array | `[]` | `[{ "type": "photo"\|"document", "url": "...", "filename": "..." }]`, up to 10. |
+| `send_at` | string | — | ISO 8601 with a timezone. Delivers then instead of now, up to 365 days ahead. |
 
 ```bash
 curl -X POST http://localhost:8080/v1/messages \
@@ -87,6 +88,7 @@ else is sent as a document. Two or more files become an album (all of the same t
   "attempts": 0,
   "telegram_message_ids": [4711],
   "created_at": "2026-09-17T10:00:00Z",
+  "scheduled_for": null,
   "delivered_at": "2026-09-17T10:00:01Z",
   "fallback_reason": null,
   "last_error": null,
@@ -95,6 +97,20 @@ else is sent as a document. Two or more files become an album (all of the same t
 ```
 
 `status` is one of `queued`, `sending`, `delivered`, `failed`, `deleted`.
+
+### Scheduling
+
+```bash
+curl -X POST http://localhost:8080/v1/messages   -H "Authorization: Bearer $KEY" -H "Content-Type: application/json"   -d '{"to": "alerts", "text": "Certificate expires today", "send_at": "2026-12-01T08:00:00Z"}'
+```
+
+The answer is `202` with `scheduled_for` set. The message waits in the queue until then and
+survives restarts, and `wait=true` returns immediately instead of burning the timeout. Cancel
+it with `DELETE /v1/messages/{id}` any time before it goes out.
+
+Times need a timezone (`Z` or an offset), cannot be in the past, and cannot be more than 365
+days ahead. Delivery is best-effort to the second: the worker polls every
+`TOPICAST_POLL_INTERVAL` and the chat rate limit still applies.
 
 ## GET /v1/messages/{id}
 

@@ -59,6 +59,7 @@ class OutgoingMessage:
     overflow: Overflow = Overflow.SPLIT
     media: list[MediaItem] = field(default_factory=list)
     media_digests: list[str] = field(default_factory=list)
+    send_at: datetime | None = None
     source: str = "api"
 
 
@@ -189,6 +190,7 @@ class MessageService:
     def _request_hash(self, out: OutgoingMessage) -> str:
         return _sha256(
             [
+                out.send_at,
                 out.alias,
                 out.text,
                 out.parse_mode,
@@ -252,7 +254,7 @@ class MessageService:
                 payload=payload,
                 status=MessageStatus.QUEUED,
                 attempts=0,
-                next_attempt_at=now,
+                next_attempt_at=out.send_at or now,
                 telegram_message_ids=[],
                 idempotency_key=idempotency_key,
                 request_hash=request_hash,

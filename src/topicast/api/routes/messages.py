@@ -75,6 +75,13 @@ async def _respond(
             MessageResponse.from_model(message, deduplicated=True).model_dump(mode="json"),
             status_code=status.HTTP_200_OK,
         )
+    scheduled = message.next_attempt_at > message.created_at
+    if wait and scheduled:
+        # Waiting for a message scheduled for later would just burn the timeout.
+        return JSONResponse(
+            MessageResponse.from_model(message).model_dump(mode="json"),
+            status_code=status.HTTP_202_ACCEPTED,
+        )
     if wait:
         final = await runtime.worker.wait_for(message.id, runtime.settings.wait_timeout)
         if final is None:
@@ -183,6 +190,7 @@ async def send_message(
             dedupe_key=payload.dedupe_key,
             overflow=payload.on_overflow,
             media=[MediaItem(type=m.type, url=m.url, filename=m.filename) for m in payload.media],
+            send_at=payload.send_at,
         )
 
     try:

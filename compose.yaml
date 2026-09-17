@@ -1,5 +1,10 @@
 # topicast — minimal self-hosted setup.
 # 1. Put your secrets in .env   2. Put your topics in config.yaml   3. docker compose up -d
+#
+# The port comes from .env (TOPICAST_PORT, default 8080) and is used inside the container and
+# on the host, so changing it there is enough. TOPICAST_BIND_ADDRESS decides who can reach it:
+# 127.0.0.1 (default) for this machine only, a VPN address for your tailnet, 0.0.0.0 for anyone
+# who can route to this host — which, with Docker, ignores UFW. See docs/security.md.
 services:
   topicast:
     image: ghcr.io/develoverli/topicast:latest
@@ -7,20 +12,12 @@ services:
     # build: .
     restart: unless-stopped
     env_file: [.env]
-    environment:
-      TOPICAST_PORT: 8080
     ports:
-      # Bind to localhost only; put a reverse proxy or a VPN in front of it.
-      - "127.0.0.1:8080:8080"
+      - "${TOPICAST_BIND_ADDRESS:-127.0.0.1}:${TOPICAST_PORT:-8080}:${TOPICAST_PORT:-8080}"
     volumes:
       - topicast-data:/data
       - ./config.yaml:/config/config.yaml:ro
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8080/healthz', timeout=3).status == 200 else 1)"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
+    # The image ships its own HEALTHCHECK, which follows TOPICAST_PORT.
 
 volumes:
   topicast-data:

@@ -25,6 +25,16 @@ chmod 600 .env
 !!! warning "`TOPICAST_SECRET_KEY` hashes your API keys"
     Keep it. If you change it, every issued key stops working.
 
+Is 8080 taken on your machine, or do you want other hosts to reach it? Add these to the same
+`.env` — the bundled `compose.yaml` uses them for both the container and the published port:
+
+```bash
+TOPICAST_PORT=9099                 # any free port
+TOPICAST_BIND_ADDRESS=127.0.0.1    # 100.x.y.z for a VPN address, 0.0.0.0 for everyone
+```
+
+Every URL below then uses your port instead of 8080.
+
 ## 3. Point the aliases at your topics
 
 Edit `config.yaml` so each alias matches a topic in your group:

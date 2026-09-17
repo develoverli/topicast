@@ -16,8 +16,8 @@ topicast reads two things:
 | `TOPICAST_SECRET_KEY` | *(required)* | Pepper used to hash API keys. At least 32 characters. Changing it invalidates every key. |
 | `TOPICAST_CONFIG_FILE` | `config.yaml` | Path to the YAML file (`/config/config.yaml` in the image). |
 | `TOPICAST_DATA_DIR` | `data` | SQLite database and upload spool (`/data` in the image). |
-| `TOPICAST_HOST` | `0.0.0.0` | Bind address. |
-| `TOPICAST_PORT` | `8080` | Bind port. |
+| `TOPICAST_HOST` | `0.0.0.0` | Bind address inside the container. Leave it; to control who can reach the service, use `TOPICAST_BIND_ADDRESS` in `compose.yaml`. |
+| `TOPICAST_PORT` | `8080` | Port the service listens on. With the bundled `compose.yaml` it is also the published host port, so changing it here is enough. |
 | `TOPICAST_LOG_LEVEL` | `info` | `debug`, `info`, `warning`, `error`. |
 | `TOPICAST_LOG_FORMAT` | `json` | `json` for production, `console` for local work. |
 | `TOPICAST_DOCS_ENABLED` | `true` | Serve `/docs` and `/openapi.json`. |

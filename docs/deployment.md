@@ -15,7 +15,7 @@ services:
     restart: unless-stopped
     env_file: [.env]
     ports:
-      - "127.0.0.1:8080:8080"
+      - "${TOPICAST_BIND_ADDRESS:-127.0.0.1}:${TOPICAST_PORT:-8080}:${TOPICAST_PORT:-8080}"
     volumes:
       - topicast-data:/data
       - ./config.yaml:/config/config.yaml:ro
@@ -24,7 +24,25 @@ volumes:
   topicast-data:
 ```
 
-Pin the tag (`:0.1.0`) in production and let Dependabot or Renovate bump it.
+Pin the tag (`:0.5.0`) in production and let Dependabot or Renovate bump it.
+
+### Choosing the port and who can reach it
+
+Both come from `.env`, so the compose file stays untouched:
+
+| Variable | Default | Effect |
+|---|---|---|
+| `TOPICAST_PORT` | `8080` | The port inside the container **and** on the host. |
+| `TOPICAST_BIND_ADDRESS` | `127.0.0.1` | `127.0.0.1` this machine only · a VPN address for your tailnet · `0.0.0.0` for anyone who can route here. |
+
+```bash
+echo "TOPICAST_PORT=9099" >> .env
+docker compose up -d
+curl -s http://127.0.0.1:9099/healthz
+```
+
+Behind a reverse proxy, leave the bind address at `127.0.0.1` and let the proxy reach the
+container over the Docker network.
 
 !!! warning "Published ports bypass the host firewall"
     Docker writes its own iptables rules, so `ports: "8080:8080"` is reachable from outside even
@@ -73,9 +91,10 @@ Exposing it publicly? Read [Security](security.md) first — at minimum disable 
 
 The simplest safe setup: bind the port to the VPN interface and skip TLS entirely.
 
-```yaml
-ports:
-  - "100.x.y.z:8080:8080"     # the host's Tailscale address
+```bash
+# .env
+TOPICAST_BIND_ADDRESS=100.x.y.z    # the host's Tailscale address
+TOPICAST_PORT=8080
 ```
 
 Client containers on another host reach it by hostname when their host is on the same tailnet:
@@ -97,8 +116,10 @@ services:
 2. **Environment**: paste your `.env` values.
 3. **Volumes**: mount `topicast-data` at `/data`, and your `config.yaml` at
    `/config/config.yaml`.
-4. **Ports**: publish the same port the container listens on
-   (`TOPICAST_PORT=8080` → published `8080`, target `8080`).
+4. **Ports**: publish the same port the container listens on. Dokploy does not share the
+   compose file's defaults, so set `TOPICAST_PORT` explicitly and use that same number for
+   Published and Target (`TOPICAST_PORT=8339` → published `8339`, target `8339`). A mismatch
+   silently yields a service nothing can reach.
 5. **Domain**: add one if you want TLS through Traefik.
 
 ## Kubernetes

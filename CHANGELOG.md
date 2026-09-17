@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/develoverli/topicast/compare/v0.5.0...v0.6.0) (2026-09-17)
+
+
+### Features
+
+* ✨ add compat webhooks, doctor, quiet hours, scheduling and buttons ([0fe3e36](https://github.com/develoverli/topicast/commit/0fe3e3608e4dd1e33745dfbeed6455d8104c09ba))
+
 ## [0.5.0](https://github.com/develoverli/topicast/compare/v0.4.0...v0.5.0) (2026-09-17)
 
 

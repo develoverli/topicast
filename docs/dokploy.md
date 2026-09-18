@@ -24,6 +24,8 @@ services:
       TOPICAST_SECRET_KEY: ${TOPICAST_SECRET_KEY}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
+      # One variable per extra group, mirrored in config.yaml:
+      # TELEGRAM_CHAT_ID_CLIENTS: ${TELEGRAM_CHAT_ID_CLIENTS}
       TOPICAST_PORT: 8080
     ports:
       - "8080:8080"
@@ -52,6 +54,7 @@ Open the **Environment** tab and paste:
 TOPICAST_SECRET_KEY=paste-32-random-characters-here
 TELEGRAM_BOT_TOKEN=123456:your-token-from-botfather
 TELEGRAM_CHAT_ID=-1001234567890
+# TELEGRAM_CHAT_ID_CLIENTS=-1009876543210   # one line per extra group
 ```
 
 Generate the secret key with `openssl rand -base64 32` on any machine, or take any long random
@@ -78,6 +81,9 @@ bots:
 chats:
   homelab:
     id: ${TELEGRAM_CHAT_ID}
+  # A second group, same bot. Declare the variable in the Environment tab too.
+  # clients:
+  #   id: ${TELEGRAM_CHAT_ID_CLIENTS}
 
 aliases:
   alerts:
@@ -86,7 +92,13 @@ aliases:
   deploys:
     chat: homelab
     topic: 7
+  # support:
+  #   chat: clients
 ```
+
+Add as many groups as you want here — the bot must be an admin in each. Redeploy the service
+after editing this file; the configuration is read at startup. See
+[Several groups](configuration.md#several-groups).
 
 Replace `5` and `7` with your own topic ids, and add one alias per topic you want to post to.
 The `${...}` values are read from the environment you set in step 2, so no secret is written

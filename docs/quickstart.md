@@ -45,6 +45,24 @@ aliases:
   deploys: { chat: homelab, topic: 7 }
 ```
 
+One group is just the starting point. To use a second one, add its id to `.env`, add a chat
+and an alias, and add the bot as an admin in that group:
+
+```bash
+TELEGRAM_CHAT_ID_CLIENTS=-1009876543210     # in .env
+```
+
+```yaml
+chats:
+  clients: { id: ${TELEGRAM_CHAT_ID_CLIENTS} }   # in config.yaml
+
+aliases:
+  support: { chat: clients }                     # no topic -> General
+```
+
+Repeat per group; the same bot serves all of them. See
+[Several groups](configuration.md#several-groups).
+
 ## 4. Start it
 
 ```bash

@@ -44,6 +44,12 @@ chats:
     id: ${TELEGRAM_CHAT_ID}
     bot: default
     rate_per_minute: 20
+  clients:
+    id: ${TELEGRAM_CHAT_ID_CLIENTS}
+    bot: default
+  status:
+    id: "@mystatuschannel"
+    bot: default
 
 aliases:
   alerts:
@@ -52,6 +58,11 @@ aliases:
     dedupe_window: 120
     silent_levels: [info]
     description: Infrastructure alerts
+  support:
+    chat: clients
+    description: Customer group without topics
+  incidents:
+    chat: status
 
 defaults:
   dedupe_window: 60
@@ -80,7 +91,9 @@ hooks:
 | `rate_per_second` | `30` | Telegram's global send limit for one bot. |
 
 Several bots are allowed; a chat picks one with `bot:`. Each bot gets its own rate limiter,
-which is the reason to add a second one: more headroom for a busy chat.
+which is the reason to add a second one: more headroom for a busy chat. The other reasons are
+presentation — a different name and avatar in front of customers — and blast radius: a token
+that leaks only reaches the chats that bot is in. One bot in every group is otherwise fine.
 
 ### `chats`
 
@@ -89,6 +102,33 @@ which is the reason to add a second one: more headroom for a busy chat.
 | `id` | *(required)* | Numeric chat id (negative for groups) or `@channelusername`. |
 | `bot` | `default` | Which bot posts here. |
 | `rate_per_minute` | `20` for groups, `60` otherwise | Per-chat send rate. |
+
+#### Several groups
+
+There is no limit of one group. List as many chats as you want — groups with topics, plain
+groups, and channels can coexist under the same bot:
+
+```yaml
+chats:
+  homelab: { id: ${TELEGRAM_CHAT_ID} }          # forum group, aliases use `topic:`
+  clients: { id: ${TELEGRAM_CHAT_ID_CLIENTS} }  # plain group, aliases omit `topic:`
+  status:  { id: "@mystatuschannel" }           # channel, by username
+```
+
+Per extra group:
+
+1. Add the variable to `.env` (`TELEGRAM_CHAT_ID_CLIENTS=-1009876543210`). A channel
+   referenced by `@username` needs no variable.
+2. Add the entry under `chats:` and at least one alias pointing at it.
+3. Add the bot to that group **as an admin** — in a channel it needs post rights.
+4. Restart: `docker compose restart topicast`. Configuration is read at startup.
+
+Keys stay scoped per alias, so each service only reaches the groups you grant it:
+
+```bash
+topicast keys create homelab-svc --scope send --alias alerts --alias deploys
+topicast keys create client-bot  --scope send --alias support
+```
 
 ### `aliases`
 
@@ -218,7 +258,8 @@ see `send_at` in the [API reference](api.md).
 ## Rate limiting
 
 Two token buckets guard every send: one per bot (`rate_per_second`) and one per chat
-(`rate_per_minute`). When Telegram answers `429`, the chat is paused for exactly as long as it
+(`rate_per_minute`). The bot bucket is shared by every chat that bot posts in, so 30/s is the
+ceiling across all your groups together, while each group keeps its own 20/minute. When Telegram answers `429`, the chat is paused for exactly as long as it
 asks and the message is retried without burning an attempt.
 
 ## Reloading

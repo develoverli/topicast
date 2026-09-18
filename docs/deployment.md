@@ -135,6 +135,7 @@ Mount `config.yaml` from a `ConfigMap` and the secrets from a `Secret`.
 ```bash
 uv tool install git+https://github.com/develoverli/topicast
 export TOPICAST_SECRET_KEY=... TELEGRAM_BOT_TOKEN=... TELEGRAM_CHAT_ID=...
+# plus one variable per extra group, e.g. TELEGRAM_CHAT_ID_CLIENTS=...
 topicast serve
 ```
 

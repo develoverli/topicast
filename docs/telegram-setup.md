@@ -1,6 +1,8 @@
 # Telegram setup
 
-topicast needs three things: a bot token, a chat id, and one topic id per alias.
+topicast needs three things: a bot token, a chat id, and one topic id per alias. Do steps 2
+to 4 once per group — one bot can serve as many groups as you want, as long as it is an admin
+in each of them.
 
 ## 1. Create the bot
 
@@ -27,7 +29,9 @@ curl -s "https://api.telegram.org/bot<TOKEN>/getUpdates" | grep -o '"chat":{"id"
 ```
 
 Supergroup ids are negative and start with `-100`, e.g. `-1001234567890`. That value goes into
-`TELEGRAM_CHAT_ID`.
+`TELEGRAM_CHAT_ID`. Every extra group gets its own variable (`TELEGRAM_CHAT_ID_CLIENTS`, …) and
+its own entry under `chats:` — see [Several groups](configuration.md#several-groups). A channel
+is referenced by `@username` instead and needs no variable, but the bot needs post rights there.
 
 !!! tip "Nothing in `getUpdates`?"
     Telegram only returns recent updates, and only if no webhook is set. Post a new message in
@@ -79,5 +83,6 @@ topicast send alerts "hello from topicast"
 ## Limits worth knowing
 
 - 4096 characters per message (topicast splits longer text), 1024 per media caption.
-- Roughly 20 messages per minute per group, and 30 per second overall per bot.
+- Roughly 20 messages per minute per group, and 30 per second overall per bot — that per-bot
+  ceiling is shared by every group the bot posts in.
 - 50 MB per uploaded file; 10 items per media group.

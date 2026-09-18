@@ -20,10 +20,10 @@ and routed to the right topic by name.
 
 ---
 
-Telegram groups with **topics** (forum mode) make a great notification hub: one group,
-one topic per concern — alerts, deploys, backups, finance. topicast puts an HTTP API in
-front of it so your apps never deal with bot tokens, chat ids, flood limits or Markdown
-escaping again.
+Point it at **as many Telegram groups as you want** — one bot, one API. Each group can
+split into **topics** (forum mode): alerts, deploys, backups, finance. Your apps send to a
+name and topicast resolves the group, the topic and the bot, so they never deal with bot
+tokens, chat ids, flood limits or Markdown escaping again.
 
 ```bash
 curl -X POST http://localhost:8080/v1/messages \
@@ -38,6 +38,7 @@ curl -X POST http://localhost:8080/v1/messages \
 |---|---|
 | Bot token copied into every service | One key per service, scoped to the aliases it may use |
 | Magic numbers (`chat_id`, `message_thread_id`) in code | Names: `"to": "alerts"` |
+| A bot token per project or group | One bot, every group and topic behind one API |
 | Bursts silently dropped by Telegram's flood limits | Queued, rate limited and retried with backoff |
 | A repeated alert floods the group | Dedupe window collapses it into `🔁 Repeated 42×` |
 | Broken Markdown loses the message | Automatic fallback to plain text, reported in the response |
@@ -115,13 +116,25 @@ bots:
     token: ${TELEGRAM_BOT_TOKEN}
 
 chats:
-  homelab:
-    id: ${TELEGRAM_CHAT_ID}
+  homelab:  { id: ${TELEGRAM_CHAT_ID} }            # group with topics
+  clients:  { id: ${TELEGRAM_CHAT_ID_CLIENTS} }    # another group, same bot
+  status:   { id: "@mystatuschannel" }             # a channel works too
 
 aliases:
   alerts:   { chat: homelab, topic: 5, dedupe_window: 120 }
   deploys:  { chat: homelab, topic: 7 }
   backups:  { chat: homelab, topic: 9, silent_levels: [info, success, warning] }
+  support:  { chat: clients }                      # no topic → General
+  incidents: { chat: status }
+```
+
+Add as many groups as you like: one entry under `chats`, one variable in `.env`, and the
+bot added as an admin there. Keys are scoped per alias, so a service only reaches the
+groups you grant it:
+
+```bash
+topicast keys create homelab-svc --scope send --alias alerts --alias deploys
+topicast keys create client-bot  --scope send --alias support
 ```
 
 Full reference: [Configuration](https://develoverli.github.io/topicast/configuration/).

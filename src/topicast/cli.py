@@ -40,6 +40,12 @@ chats:
     id: ${TELEGRAM_CHAT_ID}      # e.g. -1001234567890 (negative for groups)
     bot: default
 
+  # One bot can post in as many groups as you want. Uncomment, set the variable
+  # in .env, and add the bot as an admin there too.
+  # clients:
+  #   id: ${TELEGRAM_CHAT_ID_CLIENTS}
+  #   bot: default
+
 aliases:
   alerts:
     chat: homelab
@@ -48,6 +54,10 @@ aliases:
   deploys:
     chat: homelab
     topic: 7
+
+  # An alias for the other group. No `topic:` means the General topic.
+  # support:
+  #   chat: clients
 
 defaults:
   dedupe_window: 60              # seconds; 0 disables deduplication
@@ -108,6 +118,10 @@ def init(
     typer.echo(f"TOPICAST_SECRET_KEY={secrets.token_urlsafe(32)}")
     typer.echo("TELEGRAM_BOT_TOKEN=123456:ABC...   # from @BotFather")
     typer.echo("TELEGRAM_CHAT_ID=-1001234567890    # your group id")
+    typer.echo(
+        "\nOne bot serves as many groups as you want: add a chat under `chats:` "
+        "and a TELEGRAM_CHAT_ID_<NAME> variable for each extra group."
+    )
 
 
 @app.command("check-config")

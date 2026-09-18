@@ -15,6 +15,16 @@ chats:
     bot: default
     # rate_per_minute: 20        # default: 20 for groups, 60 for private chats
 
+  # One bot can post in as many groups as you want. Add a chat per group,
+  # uncomment what you need, and set the matching variable in .env. The bot
+  # must be an admin in every one of them.
+  # clients:
+  #   id: ${TELEGRAM_CHAT_ID_CLIENTS}
+  #   bot: default
+  # status:
+  #   id: "@mystatuschannel"     # a channel works too (bot needs post rights)
+  #   bot: default
+
 aliases:
   alerts:
     chat: homelab
@@ -29,6 +39,14 @@ aliases:
   backups:
     chat: homelab
     topic: 9
+
+  # Aliases for the other groups. A group without topics simply omits `topic`,
+  # so the message lands in General.
+  # support:
+  #   chat: clients
+  #   description: Customer-facing group, no topics
+  # incidents:
+  #   chat: status
 
 defaults:
   dedupe_window: 60              # seconds; 0 disables deduplication

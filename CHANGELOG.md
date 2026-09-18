@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.2](https://github.com/develoverli/topicast/compare/v0.6.1...v0.6.2) (2026-09-18)
+
+
+### Documentation
+
+* 📝 add a Dokploy guide and restyle the documentation site ([b062192](https://github.com/develoverli/topicast/commit/b06219264e45b13dbe78aa043730619e4b0fb02a))
+
 ## [0.6.1](https://github.com/develoverli/topicast/compare/v0.6.0...v0.6.1) (2026-09-17)
 
 

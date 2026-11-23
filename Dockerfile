@@ -48,10 +48,14 @@ WORKDIR /app
 VOLUME ["/data"]
 EXPOSE 8080
 
+# With native TLS the probe speaks HTTPS. Verification is off on purpose: it is loopback inside
+# this container, and the certificate is issued for the public name, never for 127.0.0.1.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD python -c "import os,urllib.request,sys; \
-url=f\"http://127.0.0.1:{os.environ.get('TOPICAST_PORT','8080')}/healthz\"; \
-sys.exit(0 if urllib.request.urlopen(url, timeout=3).status == 200 else 1)"
+    CMD python -c "import os,ssl,urllib.request,sys; \
+tls=bool(os.environ.get('TOPICAST_TLS_CERT_FILE')); \
+url=f\"{'https' if tls else 'http'}://127.0.0.1:{os.environ.get('TOPICAST_PORT','8080')}/healthz\"; \
+ctx=ssl._create_unverified_context() if tls else None; \
+sys.exit(0 if urllib.request.urlopen(url, timeout=3, context=ctx).status == 200 else 1)"
 
 ENTRYPOINT ["topicast"]
 CMD ["serve"]

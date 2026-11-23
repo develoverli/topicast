@@ -7,7 +7,9 @@ delivers, by sending a message and deleting it again.
 
 from __future__ import annotations
 
+import ssl
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from pathlib import Path
 from typing import Self
@@ -18,6 +20,15 @@ from topicast.config import AppConfig, Settings
 from topicast.db import ApiKey, Database
 from topicast.delivery.service import target_for
 from topicast.delivery.telegram import DeliveryError, TelegramGateway
+from topicast.transport import (
+    CERT_EXPIRY_WARNING_DAYS,
+    TransportMode,
+    cert_expiry,
+    classify,
+    describe,
+    is_private,
+    load_tls_files,
+)
 
 PROBE_TEXT = "topicast doctor: delivery works. This message deletes itself."
 
@@ -105,6 +116,87 @@ async def _storage_checks(settings: Settings, db: Database) -> list[Check]:
                 "Create one: topicast keys create <service> --scope send --alias <alias>",
             )
         )
+    return checks
+
+
+def _tls_checks(settings: Settings, now: datetime) -> list[Check]:
+    cert_file, key_file = settings.tls_cert_file, settings.tls_key_file
+    if cert_file is None or key_file is None:
+        return []
+    try:
+        load_tls_files(cert_file, key_file)
+    except (ssl.SSLError, OSError) as exc:
+        return [
+            Check.fail(
+                "tls certificate",
+                f"cannot load {cert_file} with {key_file}: {exc}",
+                "Check that both files are PEM and that the key belongs to the certificate.",
+            )
+        ]
+    expiry = cert_expiry(cert_file)
+    if expiry is None:
+        return [
+            Check.warn(
+                "tls certificate",
+                "loads, but could not read expiry",
+                "Check the expiry date by hand: openssl x509 -enddate -noout -in <cert>",
+            )
+        ]
+    renew = "Renew the certificate and restart topicast."
+    if expiry <= now:
+        return [Check.fail("tls certificate", f"expired on {expiry:%Y-%m-%d}", renew)]
+    if expiry - now < timedelta(days=CERT_EXPIRY_WARNING_DAYS):
+        return [Check.warn("tls certificate", f"expires on {expiry:%Y-%m-%d}", renew)]
+    return [Check.ok("tls certificate", f"valid until {expiry:%Y-%m-%d}")]
+
+
+def _surface_check(name: str, path: str, enabled: bool, mode: TransportMode, env: str) -> Check:
+    if not enabled:
+        return Check.ok(name, f"{path} disabled")
+    if is_private(mode):
+        return Check.ok(name, f"{path} enabled, reachable only from a private network")
+    return Check.warn(
+        name,
+        f"{path} is enabled and unauthenticated on an exposed port",
+        f"Set {env}=false unless you want it public.",
+    )
+
+
+def exposure_checks(
+    settings: Settings, config: AppConfig, *, now: datetime | None = None
+) -> list[Check]:
+    """Transport, TLS files and unauthenticated surfaces. Pure: no network, no Telegram."""
+    mode = classify(settings)
+    if mode is TransportMode.PLAIN:
+        transport = Check.warn(
+            "transport",
+            f"plain HTTP on {settings.bind_address}; API keys travel in clear",
+            "Set TOPICAST_TLS_CERT_FILE/TOPICAST_TLS_KEY_FILE, put a TLS reverse proxy in front "
+            "(TOPICAST_BEHIND_PROXY=true), or bind to 127.0.0.1 or a Tailscale address.",
+        )
+    else:
+        transport = Check.ok("transport", describe(mode))
+
+    checks = [transport, *_tls_checks(settings, now or datetime.now(UTC))]
+    checks.append(
+        _surface_check("docs", "/docs", settings.docs_enabled, mode, "TOPICAST_DOCS_ENABLED")
+    )
+    checks.append(
+        _surface_check(
+            "metrics", "/metrics", settings.metrics_enabled, mode, "TOPICAST_METRICS_ENABLED"
+        )
+    )
+
+    secret = config.hooks.github.secret
+    hint = "Set hooks.github.secret (GITHUB_WEBHOOK_SECRET) to the secret configured in GitHub."
+    if secret is None:
+        checks.append(
+            Check.warn("github secret", "not set; GitHub webhooks are accepted unsigned", hint)
+        )
+    elif not secret.get_secret_value():
+        checks.append(Check.warn("github secret", "set but empty", hint))
+    else:
+        checks.append(Check.ok("github secret", "signatures are verified"))
     return checks
 
 
@@ -231,6 +323,7 @@ async def run_doctor(
     probe: bool = False,
 ) -> Report:
     checks = await _storage_checks(settings, db)
+    checks.extend(exposure_checks(settings, config))
     bot_checks, bot_ids = await _bot_checks(config, gateway)
     checks.extend(bot_checks)
     if bot_ids:

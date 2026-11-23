@@ -77,6 +77,25 @@ class Settings(BaseSettings):
     poll_interval: float = Field(default=1.0, gt=0, le=60)
     max_attempts: int = Field(default=5, ge=1, le=50)
     trusted_proxies: str = "127.0.0.1"
+    tls_cert_file: Path | None = Field(
+        default=None,
+        description="PEM certificate (chain) to serve HTTPS natively. Requires tls_key_file.",
+    )
+    tls_key_file: Path | None = Field(
+        default=None,
+        description="PEM private key matching tls_cert_file. Requires tls_cert_file.",
+    )
+    behind_proxy: bool = Field(
+        default=False,
+        description="A reverse proxy in front terminates TLS. Silences the plain-HTTP warning.",
+    )
+    bind_address: str = Field(
+        default="127.0.0.1",
+        description=(
+            "Host address compose publishes the port on (informational: the process itself "
+            "listens on `host`). Decides whether plain HTTP deserves a warning."
+        ),
+    )
     cors_origins: list[str] = Field(
         default_factory=list,
         description=(
@@ -116,6 +135,29 @@ class Settings(BaseSettings):
             msg = f"TOPICAST_SECRET_KEY must be at least {MIN_SECRET_KEY_LENGTH} characters"
             raise ValueError(msg)
         return self
+
+    @model_validator(mode="after")
+    def _check_tls(self) -> Self:
+        files = {
+            "TOPICAST_TLS_CERT_FILE": self.tls_cert_file,
+            "TOPICAST_TLS_KEY_FILE": self.tls_key_file,
+        }
+        missing = [name for name, path in files.items() if path is None]
+        if len(missing) == 1:
+            msg = (
+                f"{missing[0]} is not set: TLS needs both TOPICAST_TLS_CERT_FILE and "
+                "TOPICAST_TLS_KEY_FILE, or neither"
+            )
+            raise ValueError(msg)
+        for name, path in files.items():
+            if path is not None and not (path.is_file() and os.access(path, os.R_OK)):
+                msg = f"{name} points at {path}, which is not a readable file"
+                raise ValueError(msg)
+        return self
+
+    @property
+    def tls_enabled(self) -> bool:
+        return self.tls_cert_file is not None and self.tls_key_file is not None
 
     @property
     def database_path(self) -> Path:

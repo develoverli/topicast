@@ -56,8 +56,57 @@ appear in proxy logs and browser history. Mitigations, in order of importance:
   the internet even when your firewall denies it. Bind to `127.0.0.1` or a VPN address.
 - Disable the public surfaces if the port is shared:
   `TOPICAST_DOCS_ENABLED=false`, `TOPICAST_METRICS_ENABLED=false`.
-- Terminate TLS in a reverse proxy; topicast speaks plain HTTP.
+- Encrypt the transport — see below.
 - Set `TOPICAST_TRUSTED_PROXIES` to your proxy so forwarded client IPs are trustworthy.
+
+## Transport encryption
+
+API keys travel in the `Authorization` header (or in `?token=` for webhooks), so anyone who can
+read the traffic can steal them. Encrypt the hop between your services and topicast in one of
+three ways — all optional, pick the one that fits:
+
+| Way | Set | Startup log |
+|---|---|---|
+| Private network only: loopback or Tailscale | `TOPICAST_BIND_ADDRESS=127.0.0.1` (default) or your `100.x` address | `info`: bound to loopback / Tailscale (WireGuard encrypts it) |
+| Reverse proxy terminates TLS (Traefik, Caddy, Cloudflare Tunnel) | `TOPICAST_BEHIND_PROXY=true` | `info`: TLS terminated by reverse proxy |
+| topicast serves HTTPS itself | `TOPICAST_TLS_CERT_FILE` + `TOPICAST_TLS_KEY_FILE` | `info`: TLS enabled |
+
+Anything else — `0.0.0.0`, a LAN address, a public IP — without TLS logs a `transport_insecure`
+warning at startup. topicast still starts: the warning tells you, it does not decide for you.
+
+Payloads are not encrypted on top of TLS on purpose. topicast has to read the text to post it,
+and Telegram bots have no end-to-end encryption, so an extra layer would protect nothing that
+TLS does not already cover — and it would break `curl` and every Slack/Discord/GitHub sender.
+The outbound hop to Telegram is always HTTPS.
+
+### Native HTTPS
+
+Mount the certificate and point both variables at it. The pair is validated at startup: one
+without the other, or a missing file, stops the process with a clear error.
+
+```yaml
+# compose.yaml
+    volumes:
+      - ./tls:/config/tls:ro
+```
+
+```bash
+# .env
+TOPICAST_TLS_CERT_FILE=/config/tls/fullchain.pem
+TOPICAST_TLS_KEY_FILE=/config/tls/privkey.pem
+```
+
+The files must be readable by uid 10001 (the image's user). topicast does not renew
+certificates; restart it after renewing. The bundled healthcheck switches to HTTPS on its own.
+
+### What `topicast doctor` checks
+
+| Check | ok | warn | fail |
+|---|---|---|---|
+| transport | native TLS, proxy declared, loopback or Tailscale | plain HTTP on an exposed address | — |
+| tls certificate | loads and is valid for 14+ days | expires within 14 days, or expiry unreadable | cannot load, key mismatch, or expired |
+| docs / metrics | disabled, or reachable only from a private network | enabled and unauthenticated on an exposed port | — |
+| github secret | set | not set, or set but empty | — |
 
 ## Browsers
 

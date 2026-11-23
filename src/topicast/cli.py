@@ -215,8 +215,11 @@ def serve() -> None:
     """Run the HTTP server (this is what the Docker image does)."""
     import uvicorn
 
+    from topicast.transport import log_transport
+
     settings = _settings()
     configure_logging(settings.log_level, settings.log_format)
+    log_transport(settings)
     uvicorn.run(
         "topicast.api.app:create_app",
         factory=True,
@@ -226,6 +229,8 @@ def serve() -> None:
         access_log=False,
         proxy_headers=True,
         forwarded_allow_ips=settings.trusted_proxies,
+        ssl_certfile=str(settings.tls_cert_file) if settings.tls_cert_file else None,
+        ssl_keyfile=str(settings.tls_key_file) if settings.tls_key_file else None,
     )
 
 

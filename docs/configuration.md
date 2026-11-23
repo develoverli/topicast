@@ -29,6 +29,10 @@ topicast reads two things:
 | `TOPICAST_MAX_ATTEMPTS` | `5` | Delivery attempts before a message is marked `failed`. |
 | `TOPICAST_POLL_INTERVAL` | `1.0` | Queue poll interval in seconds. |
 | `TOPICAST_TRUSTED_PROXIES` | `127.0.0.1` | Proxies allowed to set `X-Forwarded-For`. |
+| `TOPICAST_BIND_ADDRESS` | `127.0.0.1` | Host address `compose.yaml` publishes the port on. topicast also reads it to decide whether plain HTTP deserves a startup warning. See [Transport encryption](security.md#transport-encryption). |
+| `TOPICAST_BEHIND_PROXY` | `false` | A reverse proxy in front terminates TLS. Silences the plain-HTTP warning. |
+| `TOPICAST_TLS_CERT_FILE` | *(empty)* | PEM certificate (full chain) to serve HTTPS natively. Set together with `TOPICAST_TLS_KEY_FILE`, or neither; startup fails otherwise. |
+| `TOPICAST_TLS_KEY_FILE` | *(empty)* | PEM private key matching `TOPICAST_TLS_CERT_FILE`. |
 | `TOPICAST_CORS_ORIGINS` | *(empty)* | Browser origins allowed to call the API, comma separated. Empty disables CORS. See [Calling from a browser](#calling-from-a-browser). |
 
 ## config.yaml

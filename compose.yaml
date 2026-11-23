@@ -17,6 +17,8 @@ services:
     volumes:
       - topicast-data:/data
       - ./config.yaml:/config/config.yaml:ro
+      # Native HTTPS: mount the certificate and set TOPICAST_TLS_CERT_FILE/KEY_FILE in .env.
+      # - ./tls:/config/tls:ro
     # The image ships its own HEALTHCHECK, which follows TOPICAST_PORT.
 
 volumes:

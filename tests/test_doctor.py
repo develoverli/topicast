@@ -1,15 +1,17 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 import pytest
 
 from tests.conftest import FakeGateway, make_config
-from topicast.config import AliasConfig, Settings
+from tests.test_transport import make_pair
+from topicast.config import AliasConfig, GitHubHookConfig, HooksConfig, Settings
 from topicast.db import Database, run_migrations
 from topicast.delivery.telegram import ChatInfo, DeliveryError, MemberInfo
-from topicast.doctor import Report, Status, run_doctor
+from topicast.doctor import Report, Status, exposure_checks, run_doctor
 from topicast.security import ALL_ALIASES, Scope
 
 
@@ -141,3 +143,105 @@ async def test_unwritable_data_dir_fails(
     report = await report_for(settings, gateway, db)
     assert report.failed
     assert status_of(report, "storage") is Status.FAIL
+
+
+# --- exposure ---
+
+
+def exposure(settings: Settings, **config_overrides: Any) -> Report:
+    return Report(exposure_checks(settings, make_config(**config_overrides)))
+
+
+def with_settings(settings: Settings, **changes: Any) -> Settings:
+    return settings.model_copy(update=changes)
+
+
+def test_loopback_default_is_private(settings: Settings) -> None:
+    report = exposure(settings)
+    assert status_of(report, "transport") is Status.OK
+    assert status_of(report, "docs") is Status.OK
+    assert status_of(report, "metrics") is Status.OK
+    assert "tls certificate" not in names(report)
+
+
+def test_plain_http_on_an_exposed_address_warns(settings: Settings) -> None:
+    report = exposure(with_settings(settings, bind_address="0.0.0.0"))
+    assert status_of(report, "transport") is Status.WARN
+    assert status_of(report, "docs") is Status.WARN
+    assert status_of(report, "metrics") is Status.WARN
+    assert not report.failed
+
+
+def test_tailscale_is_private(settings: Settings) -> None:
+    report = exposure(with_settings(settings, bind_address="100.122.171.40"))
+    assert status_of(report, "transport") is Status.OK
+    assert status_of(report, "docs") is Status.OK
+
+
+def test_proxy_is_encrypted_but_surfaces_stay_public(settings: Settings) -> None:
+    report = exposure(with_settings(settings, bind_address="0.0.0.0", behind_proxy=True))
+    assert status_of(report, "transport") is Status.OK
+    assert status_of(report, "docs") is Status.WARN
+
+
+def test_disabled_surfaces_pass_when_exposed(settings: Settings) -> None:
+    changed = with_settings(
+        settings, bind_address="0.0.0.0", docs_enabled=False, metrics_enabled=False
+    )
+    report = exposure(changed)
+    assert status_of(report, "docs") is Status.OK
+    assert status_of(report, "metrics") is Status.OK
+
+
+def test_github_secret(settings: Settings) -> None:
+    assert status_of(exposure(settings), "github secret") is Status.WARN
+    empty = HooksConfig(github=GitHubHookConfig(secret=""))
+    assert status_of(exposure(settings, hooks=empty), "github secret") is Status.WARN
+    real = HooksConfig(github=GitHubHookConfig(secret="s3cret"))
+    assert status_of(exposure(settings, hooks=real), "github secret") is Status.OK
+
+
+def tls_settings(settings: Settings, tmp_path: Path, key_from: str = "server") -> Settings:
+    pair = make_pair(tmp_path / "tls")
+    key = pair.key if key_from == "server" else make_pair(tmp_path / "other", "other").key
+    return with_settings(settings, tls_cert_file=pair.cert, tls_key_file=key)
+
+
+def tls_status(settings: Settings, now: datetime | None = None) -> Status:
+    checks = exposure_checks(settings, make_config(), now=now)
+    return status_of(Report(checks), "tls certificate")
+
+
+def test_valid_certificate_passes(settings: Settings, tmp_path: Path) -> None:
+    tls = tls_settings(settings, tmp_path)
+    assert tls_status(tls) is Status.OK  # 30 days left
+    assert status_of(exposure(tls), "transport") is Status.OK
+
+
+def test_certificate_close_to_expiry_warns(settings: Settings, tmp_path: Path) -> None:
+    soon = datetime.now(UTC) + timedelta(days=20)  # 10 days left
+    assert tls_status(tls_settings(settings, tmp_path), now=soon) is Status.WARN
+
+
+def test_expired_certificate_fails(settings: Settings, tmp_path: Path) -> None:
+    later = datetime.now(UTC) + timedelta(days=60)
+    assert tls_status(tls_settings(settings, tmp_path), now=later) is Status.FAIL
+
+
+def test_mismatched_key_fails(settings: Settings, tmp_path: Path) -> None:
+    assert tls_status(tls_settings(settings, tmp_path, key_from="other")) is Status.FAIL
+
+
+def test_unreadable_expiry_warns(
+    settings: Settings, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("topicast.doctor.cert_expiry", lambda _path: None)
+    assert tls_status(tls_settings(settings, tmp_path)) is Status.WARN
+
+
+async def test_doctor_includes_exposure(
+    settings: Settings, gateway: FakeGateway, db: Database
+) -> None:
+    report = await report_for(settings, gateway, db)
+    assert "transport" in names(report)
+    assert not report.failed

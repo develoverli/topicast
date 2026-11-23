@@ -39,8 +39,12 @@ Report privately through GitHub's private vulnerability reporting:
 
 topicast is designed for a private network. Keep these in mind:
 
-- **Do not expose it directly to the internet** without a reverse proxy with TLS. Published
-  Docker ports bypass host firewalls such as UFW — bind to `127.0.0.1` or a VPN interface.
+- **Do not expose it directly to the internet** without TLS: either a reverse proxy
+  (`TOPICAST_BEHIND_PROXY=true`) or native HTTPS (`TOPICAST_TLS_CERT_FILE` +
+  `TOPICAST_TLS_KEY_FILE`). Published Docker ports bypass host firewalls such as UFW — bind to
+  `127.0.0.1` or a VPN interface. topicast warns at startup when it is reachable over plain HTTP.
+- Run `topicast doctor` after deploying: it checks transport, certificate, public surfaces and
+  the GitHub secret.
 - API keys are stored as HMAC-SHA256 hashes, salted with `TOPICAST_SECRET_KEY`. Keep that
   value secret; changing it invalidates every key.
 - Webhook keys travel in the URL. Create them with `--scope hooks` only, and scope them to a

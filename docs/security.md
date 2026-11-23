@@ -106,7 +106,7 @@ certificates; restart it after renewing. The bundled healthcheck switches to HTT
 | transport | native TLS, proxy declared, loopback or Tailscale | plain HTTP on an exposed address | — |
 | tls certificate | loads and is valid for 14+ days | expires within 14 days, or expiry unreadable | cannot load, key mismatch, or expired |
 | docs / metrics | disabled, or reachable only from a private network | enabled and unauthenticated on an exposed port | — |
-| github secret | set | not set, or set but empty | — |
+| github secret | set | not set (an empty value counts as not set) | — |
 
 ## Browsers
 

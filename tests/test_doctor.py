@@ -195,8 +195,6 @@ def test_disabled_surfaces_pass_when_exposed(settings: Settings) -> None:
 
 def test_github_secret(settings: Settings) -> None:
     assert status_of(exposure(settings), "github secret") is Status.WARN
-    empty = HooksConfig(github=GitHubHookConfig(secret=""))
-    assert status_of(exposure(settings, hooks=empty), "github secret") is Status.WARN
     real = HooksConfig(github=GitHubHookConfig(secret="s3cret"))
     assert status_of(exposure(settings, hooks=real), "github secret") is Status.OK
 

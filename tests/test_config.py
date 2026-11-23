@@ -60,3 +60,19 @@ def test_missing_file(tmp_path: Path) -> None:
 def test_group_chats_default_to_twenty_per_minute(tmp_path: Path) -> None:
     config = load_app_config(write(tmp_path, BASE), ENV)
     assert config.chats["homelab"].effective_rate_per_minute == 20.0
+
+
+GITHUB_SECRET = BASE + "hooks:\n  github:\n    secret: ${GH_SECRET:-}\n"
+
+
+@pytest.mark.parametrize("value", ["", "   "])
+def test_blank_github_secret_means_no_secret(tmp_path: Path, value: str) -> None:
+    config = load_app_config(write(tmp_path, GITHUB_SECRET), {**ENV, "GH_SECRET": value})
+    assert config.hooks.github.secret is None
+
+
+def test_github_secret_is_kept_when_set(tmp_path: Path) -> None:
+    config = load_app_config(write(tmp_path, GITHUB_SECRET), {**ENV, "GH_SECRET": "s3cret"})
+    secret = config.hooks.github.secret
+    assert secret is not None
+    assert secret.get_secret_value() == "s3cret"

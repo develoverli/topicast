@@ -277,6 +277,15 @@ class GitHubHookConfig(_Strict):
         default=None, description="Allowed event names. Default: all supported events."
     )
 
+    @field_validator("secret", mode="before")
+    @classmethod
+    def _blank_secret_is_unset(cls, value: Any) -> Any:
+        # `${GITHUB_WEBHOOK_SECRET:-}` yields "" when the variable is empty. That means "no
+        # secret", not "sign with an empty key" — which would reject every unsigned delivery.
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
+
 
 class HooksConfig(_Strict):
     templates: dict[Name, str] = Field(default_factory=dict)

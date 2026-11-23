@@ -193,8 +193,6 @@ def exposure_checks(
         checks.append(
             Check.warn("github secret", "not set; GitHub webhooks are accepted unsigned", hint)
         )
-    elif not secret.get_secret_value():
-        checks.append(Check.warn("github secret", "set but empty", hint))
     else:
         checks.append(Check.ok("github secret", "signatures are verified"))
     return checks

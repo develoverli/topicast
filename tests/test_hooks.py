@@ -122,6 +122,19 @@ async def test_github_signature_is_verified(client: AsyncClient, runtime: Runtim
     assert signed.status_code == 202
 
 
+async def test_github_blank_secret_accepts_unsigned(client: AsyncClient, runtime: Runtime) -> None:
+    # `${GITHUB_WEBHOOK_SECRET:-}` with the variable empty must not demand a signature.
+    runtime.config = make_config(hooks=HooksConfig(github=GitHubHookConfig(secret="")))
+    runtime.service.config = runtime.config
+    token = await _hook_key(runtime, "gh-blank")
+    response = await client.post(
+        f"/v1/hooks/github/deploys?token={token}",
+        content=json.dumps(PUSH).encode(),
+        headers={"X-GitHub-Event": "push", "Content-Type": "application/json"},
+    )
+    assert response.status_code == 202
+
+
 async def test_github_ignores_unsupported_events(client: AsyncClient, runtime: Runtime) -> None:
     token = await _hook_key(runtime, "gh-ignore")
     response = await client.post(
